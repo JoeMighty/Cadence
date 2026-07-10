@@ -9,6 +9,8 @@ A local-first desktop AI music generator. Cadence creates full tracks, instrumen
 
 Status: early scaffolding. Windows first, then macOS and Linux.
 
+Website: [joemighty.github.io/Cadence](https://joemighty.github.io/Cadence/)
+
 ## Architecture
 
 - `app/` — Tauri 2 desktop shell (Rust) with a Next.js (static export) frontend
