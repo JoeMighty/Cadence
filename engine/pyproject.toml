@@ -1,0 +1,10 @@
+[project]
+name = "cadence-engine"
+version = "0.1.0"
+description = "Cadence local engine — music generation and voice conversion, served over localhost"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.139.0",
+    "uvicorn[standard]>=0.51.0",
+]

@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* Cadence palette (light mode). Dark mode is a Phase 6 item. */
+:root {
+  --background: #fafafa;
+  --surface: #ffffff;
+  --foreground: #1d1d1f;
+  --foreground-secondary: #6e6e73;
+  --border: #e5e5ea;
+  --accent: #5856d6;
+  --success: #34c759;
+  --error: #ff3b30;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}

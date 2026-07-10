@@ -1,0 +1,31 @@
+# Frontend / Tauri
+app/node_modules/
+app/.next/
+app/out/
+app/src-tauri/target/
+app/src-tauri/gen/
+
+# Python engine
+engine/.venv/
+engine/__pycache__/
+engine/**/__pycache__/
+engine/vendor/
+
+# Generated content
+*.wav
+*.mp3
+*.safetensors
+*.ckpt
+*.pth
+voice-profiles/
+
+# Secrets / local config
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
