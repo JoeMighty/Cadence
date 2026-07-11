@@ -10,6 +10,7 @@ engine/.venv/
 engine/__pycache__/
 engine/**/__pycache__/
 engine/vendor/
+engine/output/
 
 # Generated content
 *.wav
