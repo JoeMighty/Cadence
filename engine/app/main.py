@@ -12,6 +12,7 @@ Phase 1 surface:
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -21,7 +22,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from . import acestep_service, applio_service, db, mock_audio, settings, voice_service
+from . import (
+    acestep_service,
+    applio_service,
+    db,
+    mock_audio,
+    settings,
+    text_provider,
+    voice_service,
+)
 from .jobs import Job, JobStatus, queue
 
 app = FastAPI(title="Cadence Engine")
@@ -246,6 +255,118 @@ async def train_voice(profile_id: str, req: TrainRequest) -> dict:
 
     job = queue.submit(Job(kind="voice-train", params={"profile_id": profile_id}), runner)
     return {"job_id": job.id, "profile_id": profile_id}
+
+
+# --------------------------- compose ----------------------------
+
+class ComposeRequest(BaseModel):
+    prompt: str = Field(min_length=1)
+    voice_profile_id: Optional[str] = None
+    instrumental: bool = False
+    duration: Optional[float] = Field(default=None, ge=10, le=600)
+    thinking: bool = True
+
+
+@app.post("/compose")
+async def compose(req: ComposeRequest) -> dict:
+    profile = None
+    if req.voice_profile_id:
+        profile = db.get_profile(req.voice_profile_id)
+        if profile is None:
+            raise HTTPException(404, "No such voice profile")
+        if not settings.MOCK and (
+            profile["status"] != "ready" or not profile["model_path"] or not profile["index_path"]
+        ):
+            raise HTTPException(409, f"Voice '{profile['name']}' is not trained yet")
+
+    async def runner(job: Job) -> None:
+        job.update(status=JobStatus.GENERATING, detail="Writing lyrics")
+        structured = await asyncio.to_thread(
+            text_provider.structure_prompt, req.prompt, req.instrumental
+        )
+        caption = structured["caption"] or req.prompt
+
+        job.update(status=JobStatus.GENERATING, detail="Generating music")
+        if settings.MOCK:
+            music_path = str(settings.OUTPUT_DIR / f"track-music-{job.id}.wav")
+            mock_audio.write_mock_track(Path(music_path), seconds=req.duration or 15)
+        else:
+            gen = await acestep_service.generate(
+                {
+                    "prompt": caption,
+                    "lyrics": structured["lyrics"],
+                    "vocal_language": structured["vocal_language"],
+                    "bpm": structured["bpm"],
+                    "audio_duration": req.duration,
+                    "instrumental": req.instrumental,
+                    "thinking": req.thinking,
+                    "audio_format": "wav",
+                },
+                progress=lambda m: job.update(detail=m),
+            )
+            music_path = gen["audio_path"]
+
+        final_path = music_path
+        voice_name = None
+        if not req.instrumental and profile is not None:
+            job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
+            out = settings.OUTPUT_DIR / f"track-{job.id}.wav"
+            if settings.MOCK:
+                mock_audio.write_mock_conversion(Path(music_path), out)
+                final_path = str(out)
+            else:
+                conv = await applio_service.convert(
+                    {
+                        "input_path": music_path,
+                        "output_path": str(out),
+                        "pth_path": profile["model_path"],
+                        "index_path": profile["index_path"],
+                    }
+                )
+                final_path = conv["audio_path"]
+            voice_name = profile["name"]
+
+        track = db.create_track(
+            prompt=req.prompt,
+            caption=caption,
+            lyrics=structured["lyrics"],
+            vocal_language=structured["vocal_language"],
+            bpm=structured["bpm"],
+            audio_path=final_path,
+            voice_profile_id=profile["id"] if profile else None,
+            voice_name=voice_name,
+            instrumental=1 if req.instrumental else 0,
+        )
+        job.result = {"track": track}
+        job.update(status=JobStatus.DONE, detail="Done")
+
+    job = queue.submit(Job(kind="compose", params={"prompt": req.prompt}), runner)
+    return {"job_id": job.id}
+
+
+@app.get("/tracks")
+def list_tracks() -> list[dict]:
+    return db.list_tracks()
+
+
+@app.delete("/tracks/{track_id}")
+def delete_track(track_id: str) -> dict:
+    track = db.get_track(track_id)
+    if track:
+        Path(track["audio_path"]).unlink(missing_ok=True)
+        db.delete_track(track_id)
+    return {"deleted": track_id}
+
+
+@app.get("/tracks/{track_id}/audio")
+def track_audio(track_id: str) -> FileResponse:
+    track = db.get_track(track_id)
+    if track is None:
+        raise HTTPException(404, "No such track")
+    path = Path(track["audio_path"])
+    if not path.exists():
+        raise HTTPException(410, "Track file no longer exists")
+    return FileResponse(path, media_type="audio/wav", filename=path.name)
 
 
 @app.on_event("shutdown")

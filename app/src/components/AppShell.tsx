@@ -2,20 +2,21 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { getHealth } from "@/lib/engine";
+import Generate from "@/components/Generate";
 import VoiceSetup from "@/components/VoiceSetup";
 
-type View = "home" | "voice" | "library" | "settings";
+type View = "generate" | "voice" | "library" | "settings";
 type EngineState = "checking" | "online" | "offline";
 
 const NAV: { id: View; label: string; icon: ReactNode }[] = [
-  { id: "home", label: "Home", icon: <HomeIcon /> },
+  { id: "generate", label: "Generate", icon: <WaveIcon /> },
   { id: "voice", label: "Voice", icon: <MicIcon /> },
   { id: "library", label: "Library", icon: <LibraryIcon /> },
   { id: "settings", label: "Settings", icon: <GearIcon /> },
 ];
 
 export default function AppShell() {
-  const [view, setView] = useState<View>("home");
+  const [view, setView] = useState<View>("generate");
   const [engine, setEngine] = useState<EngineState>("checking");
 
   useEffect(() => {
@@ -70,29 +71,11 @@ export default function AppShell() {
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-        {view === "home" && <HomeView engine={engine} />}
+        {view === "generate" && <Generate goToVoice={() => setView("voice")} />}
         {view === "voice" && <VoiceSetup />}
         {view === "library" && <Placeholder title="Library" phase="Phase 5" />}
         {view === "settings" && <Placeholder title="Settings" phase="Phase 4" />}
       </main>
-    </div>
-  );
-}
-
-function HomeView({ engine }: { engine: EngineState }) {
-  return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-8 text-center">
-      <WaveMark large />
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight">Cadence</h1>
-      <p className="mt-3 max-w-md text-foreground-secondary">
-        Full songs from a sentence, sung in your own voice. Start by training a voice, then
-        generate.
-      </p>
-      {engine === "offline" && (
-        <p className="mt-6 rounded-xl border border-error/30 bg-error/5 px-4 py-3 text-sm text-error">
-          The engine isn&apos;t running. Start it, then this will connect automatically.
-        </p>
-      )}
     </div>
   );
 }
@@ -123,11 +106,10 @@ function WaveMark({ large = false }: { large?: boolean }) {
   );
 }
 
-function HomeIcon() {
+function WaveIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V20h14V9.5" />
+      <path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 8v8" />
     </svg>
   );
 }

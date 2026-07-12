@@ -32,6 +32,10 @@ ACESTEP_READY_TIMEOUT = int(os.getenv("CADENCE_ACESTEP_READY_TIMEOUT", "1800"))
 # Applio vendor install (voice conversion).
 APPLIO_DIR = Path(os.getenv("CADENCE_APPLIO_DIR", ENGINE_ROOT / "vendor" / "Applio"))
 
+# Local text provider (lyrics/style structuring). Ollama over IPv4.
+OLLAMA_URL = os.getenv("CADENCE_OLLAMA_URL", "http://127.0.0.1:11434")
+OLLAMA_MODEL = os.getenv("CADENCE_OLLAMA_MODEL", "qwen3.5:9b")
+
 
 def acestep_python() -> Path:
     return ACESTEP_DIR / ".venv" / "Scripts" / "python.exe"

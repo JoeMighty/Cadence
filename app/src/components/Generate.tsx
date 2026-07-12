@@ -1,0 +1,285 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  compose,
+  getJob,
+  listProfiles,
+  trackAudioUrl,
+  type Job,
+  type Track,
+  type VoiceProfile,
+} from "@/lib/engine";
+
+const STEPS_VOICE = ["Writing lyrics", "Generating music", "Converting to your voice"];
+const STEPS_INSTRUMENTAL = ["Writing lyrics", "Generating music"];
+
+function stepIndex(detail: string): number {
+  if (detail.startsWith("Writing")) return 0;
+  if (detail.startsWith("Converting")) return 2;
+  if (detail.toLowerCase().includes("music") || detail.startsWith("Starting")) return 1;
+  return 0;
+}
+
+export default function Generate({ goToVoice }: { goToVoice: () => void }) {
+  const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
+  const [prompt, setPrompt] = useState("");
+  const [voiceId, setVoiceId] = useState<string>("instrumental");
+  const [advanced, setAdvanced] = useState(false);
+  const [duration, setDuration] = useState(30);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const ready = profiles.filter((p) => p.status === "ready");
+  const instrumental = voiceId === "instrumental";
+  const track: Track | null = job?.status === "done" ? job.result?.track ?? null : null;
+  const running = jobId != null && job?.status !== "done" && job?.status !== "error";
+
+  const load = useCallback(async () => {
+    try {
+      const list = await listProfiles();
+      setProfiles(list);
+      const firstReady = list.find((p) => p.status === "ready");
+      if (firstReady) setVoiceId((v) => (v === "instrumental" ? firstReady.id : v));
+    } catch {
+      /* engine offline; the shell surfaces this */
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Poll the compose job while it runs.
+  useEffect(() => {
+    if (!jobId) return;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const j = await getJob(jobId);
+        if (!alive) return;
+        setJob(j);
+        if (j.status === "done" || j.status === "error") return;
+      } catch {
+        /* transient */
+      }
+      if (alive) timer = setTimeout(tick, 1500);
+    };
+    let timer = setTimeout(tick, 500);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [jobId]);
+
+  async function onGenerate() {
+    if (!prompt.trim()) return;
+    setBusy(true);
+    setError(null);
+    setJob(null);
+    try {
+      const res = await compose({
+        prompt: prompt.trim(),
+        instrumental,
+        voice_profile_id: instrumental ? undefined : voiceId,
+        duration,
+      });
+      setJobId(res.job_id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not start generation");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-3xl px-8 py-10">
+      <header className="mb-8">
+        <p className="font-mono text-xs uppercase tracking-widest text-foreground-secondary">
+          Generate
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          Describe a song, hear it in your voice
+        </h1>
+      </header>
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-error/30 bg-error/5 px-4 py-3 text-sm text-error">
+          {error}
+        </div>
+      )}
+
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="A slow bossa nova about rain on the window, in Portuguese…"
+        rows={3}
+        disabled={running}
+        className="w-full resize-none rounded-2xl border border-border bg-surface px-5 py-4 text-lg leading-relaxed outline-none transition-colors focus:border-accent disabled:opacity-60"
+      />
+
+      {/* voice + generate row */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs uppercase tracking-widest text-foreground-secondary">
+            Voice
+          </span>
+          {ready.length === 0 ? (
+            <button
+              onClick={goToVoice}
+              className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground-secondary hover:border-accent hover:text-accent"
+            >
+              Train a voice →
+            </button>
+          ) : (
+            <>
+              {ready.map((p) => (
+                <VoiceChip key={p.id} label={p.name} active={voiceId === p.id} onClick={() => setVoiceId(p.id)} />
+              ))}
+            </>
+          )}
+          <VoiceChip
+            label="Instrumental"
+            active={instrumental}
+            onClick={() => setVoiceId("instrumental")}
+          />
+        </div>
+
+        <button
+          onClick={onGenerate}
+          disabled={busy || running || !prompt.trim()}
+          className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-8 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {running ? "Generating…" : "Generate"}
+        </button>
+      </div>
+
+      {/* advanced */}
+      <div className="mt-4">
+        <button
+          onClick={() => setAdvanced((a) => !a)}
+          className="font-mono text-xs uppercase tracking-widest text-foreground-secondary hover:text-foreground"
+        >
+          {advanced ? "− Advanced" : "+ Advanced"}
+        </button>
+        {advanced && (
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+            <label className="text-sm text-foreground-secondary">Length</label>
+            <select
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              disabled={running}
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
+            >
+              {[15, 30, 60, 90, 120].map((s) => (
+                <option key={s} value={s}>
+                  {s}s
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* status */}
+      {jobId && job && job.status !== "done" && (
+        <StatusCard job={job} instrumental={instrumental} />
+      )}
+      {job?.status === "error" && (
+        <div className="mt-6 rounded-2xl border border-error/30 bg-error/5 p-5 text-sm text-error">
+          {job.error ?? "Generation failed."}
+        </div>
+      )}
+
+      {/* result */}
+      {track && <Result track={track} />}
+    </div>
+  );
+}
+
+function StatusCard({ job, instrumental }: { job: Job; instrumental: boolean }) {
+  const steps = instrumental ? STEPS_INSTRUMENTAL : STEPS_VOICE;
+  const current = stepIndex(job.detail);
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-surface p-6">
+      <div className="flex flex-col gap-3">
+        {steps.map((label, i) => {
+          const state = i < current ? "done" : i === current ? "active" : "todo";
+          return (
+            <div key={label} className="flex items-center gap-3">
+              <span
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-[0.6rem] ${
+                  state === "done"
+                    ? "bg-success text-white"
+                    : state === "active"
+                      ? "bg-accent text-white"
+                      : "border border-border text-foreground-secondary"
+                }`}
+              >
+                {state === "done" ? "✓" : i + 1}
+              </span>
+              <span
+                className={`text-sm ${
+                  state === "todo" ? "text-foreground-secondary" : "text-foreground"
+                }`}
+              >
+                {label}
+              </span>
+              {state === "active" && (
+                <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-accent" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-4 font-mono text-xs text-foreground-secondary">{job.detail}</p>
+    </div>
+  );
+}
+
+function Result({ track }: { track: Track }) {
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-surface p-6">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="rounded-full border border-success/40 bg-success/5 px-2.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-success">
+          Done
+        </span>
+        {track.voice_name && (
+          <span className="font-mono text-xs text-foreground-secondary">
+            voice · {track.voice_name}
+          </span>
+        )}
+        {track.vocal_language && (
+          <span className="font-mono text-xs text-foreground-secondary">
+            {track.vocal_language}
+            {track.bpm ? ` · ${track.bpm} bpm` : ""}
+          </span>
+        )}
+      </div>
+      {track.caption && <p className="mb-4 text-sm text-foreground-secondary">{track.caption}</p>}
+      <audio controls src={trackAudioUrl(track.id)} className="w-full" />
+      {track.lyrics && (
+        <pre className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap border-t border-border pt-4 font-sans text-sm leading-relaxed text-foreground-secondary">
+          {track.lyrics}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function VoiceChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+        active
+          ? "border-accent bg-accent/5 text-foreground"
+          : "border-border text-foreground-secondary hover:border-foreground-secondary"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}

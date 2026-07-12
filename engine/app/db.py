@@ -38,6 +38,20 @@ CREATE TABLE IF NOT EXISTS voice_takes (
     created_at   REAL NOT NULL,
     FOREIGN KEY (profile_id) REFERENCES voice_profiles(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS tracks (
+    id               TEXT PRIMARY KEY,
+    prompt           TEXT NOT NULL,
+    caption          TEXT,
+    lyrics           TEXT,
+    vocal_language   TEXT,
+    bpm              INTEGER,
+    audio_path       TEXT NOT NULL,
+    voice_profile_id TEXT,
+    voice_name       TEXT,
+    instrumental     INTEGER NOT NULL DEFAULT 0,
+    created_at       REAL NOT NULL
+);
 """
 
 
@@ -142,6 +156,37 @@ def get_take(take_id: str) -> Optional[dict[str, Any]]:
 def delete_take(take_id: str) -> None:
     with _connect() as conn:
         conn.execute("DELETE FROM voice_takes WHERE id = ?", (take_id,))
+
+
+# ---------- tracks ----------
+
+def create_track(**fields: Any) -> dict[str, Any]:
+    tid = uuid.uuid4().hex[:12]
+    fields["id"] = tid
+    fields["created_at"] = time.time()
+    cols = ", ".join(fields)
+    marks = ", ".join("?" for _ in fields)
+    with _connect() as conn:
+        conn.execute(f"INSERT INTO tracks ({cols}) VALUES ({marks})", tuple(fields.values()))
+        row = conn.execute("SELECT * FROM tracks WHERE id = ?", (tid,)).fetchone()
+        return dict(row)
+
+
+def list_tracks() -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute("SELECT * FROM tracks ORDER BY created_at DESC").fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_track(track_id: str) -> Optional[dict[str, Any]]:
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM tracks WHERE id = ?", (track_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def delete_track(track_id: str) -> None:
+    with _connect() as conn:
+        conn.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
 
 
 def _total_seconds(conn: sqlite3.Connection, profile_id: str) -> float:

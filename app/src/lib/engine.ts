@@ -96,3 +96,59 @@ export async function trainVoice(id: string, epochs?: number): Promise<{ job_id:
     }),
   );
 }
+
+// ---------- compose / tracks ----------
+
+export type JobStatus = "queued" | "generating" | "converting" | "done" | "error";
+
+export interface Track {
+  id: string;
+  prompt: string;
+  caption: string | null;
+  lyrics: string | null;
+  vocal_language: string | null;
+  bpm: number | null;
+  audio_path: string;
+  voice_profile_id: string | null;
+  voice_name: string | null;
+  instrumental: number;
+  created_at: number;
+}
+
+export interface Job {
+  id: string;
+  kind: string;
+  status: JobStatus;
+  detail: string;
+  result: { track?: Track } | null;
+  error: string | null;
+}
+
+export interface ComposeOptions {
+  prompt: string;
+  voice_profile_id?: string;
+  instrumental?: boolean;
+  duration?: number;
+}
+
+export async function compose(opts: ComposeOptions): Promise<{ job_id: string }> {
+  return json(
+    await fetch(`${BASE}/compose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(opts),
+    }),
+  );
+}
+
+export async function getJob(jobId: string): Promise<Job> {
+  return json(await fetch(`${BASE}/status/${jobId}`));
+}
+
+export async function listTracks(): Promise<Track[]> {
+  return json(await fetch(`${BASE}/tracks`));
+}
+
+export function trackAudioUrl(trackId: string): string {
+  return `${BASE}/tracks/${trackId}/audio`;
+}
