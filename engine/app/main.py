@@ -26,9 +26,10 @@ from . import (
     acestep_service,
     applio_service,
     db,
+    keystore,
     mock_audio,
-    secrets,
     settings,
+    stems,
     system_info,
     text_provider,
     voice_service,
@@ -311,16 +312,37 @@ async def compose(req: ComposeRequest) -> dict:
         final_path = music_path
         voice_name = None
         if not req.instrumental and profile is not None:
-            job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
-            out = settings.OUTPUT_DIR / f"track-{job.id}.wav"
+            final = settings.OUTPUT_DIR / f"track-{job.id}.wav"
             if settings.MOCK:
-                mock_audio.write_mock_conversion(Path(music_path), out)
-                final_path = str(out)
+                job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
+                mock_audio.write_mock_conversion(Path(music_path), final)
+                final_path = str(final)
+            elif stems.available():
+                # Re-voice only the isolated vocal, then remix with the instrumental.
+                job.update(status=JobStatus.CONVERTING, detail="Separating vocals")
+                vocal, instrumental = await stems.separate(
+                    Path(music_path), settings.OUTPUT_DIR / f"stems-{job.id}"
+                )
+                job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
+                converted = settings.OUTPUT_DIR / f"vocal-{job.id}.wav"
+                await applio_service.convert(
+                    {
+                        "input_path": str(vocal),
+                        "output_path": str(converted),
+                        "pth_path": profile["model_path"],
+                        "index_path": profile["index_path"],
+                    }
+                )
+                job.update(status=JobStatus.CONVERTING, detail="Remixing")
+                await stems.remix(converted, instrumental, final)
+                final_path = str(final)
             else:
+                # Fallback: convert the full mix (lower quality, but always works).
+                job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
                 conv = await applio_service.convert(
                     {
                         "input_path": music_path,
-                        "output_path": str(out),
+                        "output_path": str(final),
                         "pth_path": profile["model_path"],
                         "index_path": profile["index_path"],
                     }
@@ -384,7 +406,7 @@ class SecretUpdate(BaseModel):
 def _settings_payload() -> dict:
     return {
         "text_provider": db.get_setting("text_provider", "ollama"),
-        "secrets": secrets.status(),
+        "secrets": keystore.status(),
     }
 
 
@@ -404,21 +426,21 @@ def update_settings(req: SettingsUpdate) -> dict:
 
 @app.get("/secrets")
 def get_secrets() -> dict:
-    return secrets.status()
+    return keystore.status()
 
 
 @app.put("/secrets/{name}")
 def put_secret(name: str, req: SecretUpdate) -> dict:
-    if name not in secrets.KNOWN:
+    if name not in keystore.KNOWN:
         raise HTTPException(404, f"Unknown secret '{name}'")
-    secrets.set_secret(name, req.value.strip())
-    return secrets.status()
+    keystore.set_secret(name, req.value.strip())
+    return keystore.status()
 
 
 @app.delete("/secrets/{name}")
 def delete_secret(name: str) -> dict:
-    secrets.clear_secret(name)
-    return secrets.status()
+    keystore.clear_secret(name)
+    return keystore.status()
 
 
 @app.get("/system")

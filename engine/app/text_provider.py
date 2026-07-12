@@ -12,7 +12,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from . import db, secrets, settings
+from . import db, keystore, settings
 
 
 class TextProviderError(RuntimeError):
@@ -138,7 +138,7 @@ _CLAUDE_SCHEMA = {
 
 
 def _via_claude(prompt: str, instrumental: bool = False) -> dict[str, Any]:
-    key = secrets.get_secret("claude")
+    key = keystore.get_secret("claude")
     if not key:
         raise TextProviderError("No Claude API key set. Add one in Settings, or switch to Ollama.")
     try:

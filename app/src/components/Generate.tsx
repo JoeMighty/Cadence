@@ -16,7 +16,7 @@ const STEPS_INSTRUMENTAL = ["Writing lyrics", "Generating music"];
 
 function stepIndex(detail: string): number {
   if (detail.startsWith("Writing")) return 0;
-  if (detail.startsWith("Converting")) return 2;
+  if (/^(Converting|Separating|Remixing)/.test(detail)) return 2;
   if (detail.toLowerCase().includes("music") || detail.startsWith("Starting")) return 1;
   return 0;
 }
