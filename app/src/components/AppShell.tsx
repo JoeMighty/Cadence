@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { getHealth } from "@/lib/engine";
 import Generate from "@/components/Generate";
+import Library from "@/components/Library";
 import Settings from "@/components/Settings";
 import VoiceSetup from "@/components/VoiceSetup";
 
@@ -74,18 +75,9 @@ export default function AppShell() {
       <main className="flex-1 overflow-y-auto">
         {view === "generate" && <Generate goToVoice={() => setView("voice")} />}
         {view === "voice" && <VoiceSetup />}
-        {view === "library" && <Placeholder title="Library" phase="Phase 5" />}
+        {view === "library" && <Library goToGenerate={() => setView("generate")} />}
         {view === "settings" && <Settings />}
       </main>
-    </div>
-  );
-}
-
-function Placeholder({ title, phase }: { title: string; phase: string }) {
-  return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-8 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-2 font-mono text-sm text-foreground-secondary">Arrives in {phase}</p>
     </div>
   );
 }

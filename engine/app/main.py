@@ -13,6 +13,8 @@ Phase 1 surface:
 from __future__ import annotations
 
 import asyncio
+import re
+import subprocess
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -390,7 +392,42 @@ def track_audio(track_id: str) -> FileResponse:
     path = Path(track["audio_path"])
     if not path.exists():
         raise HTTPException(410, "Track file no longer exists")
-    return FileResponse(path, media_type="audio/wav", filename=path.name)
+    return FileResponse(path, media_type="audio/wav", content_disposition_type="inline")
+
+
+def _slug(text: Optional[str], fallback: str = "cadence-track") -> str:
+    s = re.sub(r"[^\w\s-]", "", (text or "")).strip().lower()
+    s = re.sub(r"[\s_-]+", "-", s)[:48].strip("-")
+    return s or fallback
+
+
+@app.get("/tracks/{track_id}/export")
+def export_track(track_id: str, fmt: str = "wav") -> FileResponse:
+    track = db.get_track(track_id)
+    if track is None:
+        raise HTTPException(404, "No such track")
+    src = Path(track["audio_path"])
+    if not src.exists():
+        raise HTTPException(410, "Track file no longer exists")
+    name = _slug(track.get("prompt") or track.get("caption"))
+
+    if fmt == "mp3":
+        mp3 = src.with_suffix(".mp3")
+        if not mp3.exists():
+            python = settings.applio_python()
+            if not python.exists():
+                raise HTTPException(503, "MP3 export needs the Applio environment")
+            helper = Path(__file__).parent / "mp3_helper.py"
+            proc = subprocess.run(
+                [str(python), str(helper), str(src), str(mp3)],
+                cwd=str(settings.APPLIO_DIR),
+                capture_output=True, text=True, timeout=180,
+            )
+            if proc.returncode != 0 or not mp3.exists():
+                raise HTTPException(500, f"MP3 export failed: {(proc.stderr or proc.stdout)[-300:]}")
+        return FileResponse(mp3, media_type="audio/mpeg", filename=f"{name}.mp3")
+
+    return FileResponse(src, media_type="audio/wav", filename=f"{name}.wav")
 
 
 # ---------------------- settings & system -----------------------

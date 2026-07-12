@@ -153,6 +153,14 @@ export function trackAudioUrl(trackId: string): string {
   return `${BASE}/tracks/${trackId}/audio`;
 }
 
+export function trackExportUrl(trackId: string, fmt: "wav" | "mp3"): string {
+  return `${BASE}/tracks/${trackId}/export?fmt=${fmt}`;
+}
+
+export async function deleteTrack(trackId: string): Promise<void> {
+  await fetch(`${BASE}/tracks/${trackId}`, { method: "DELETE" });
+}
+
 // ---------- settings / secrets / system ----------
 
 export type SecretName = "claude" | "suno" | "elevenlabs";
