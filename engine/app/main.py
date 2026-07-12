@@ -16,14 +16,28 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from . import acestep_service, applio_service, mock_audio, settings
+from . import acestep_service, applio_service, db, mock_audio, settings, voice_service
 from .jobs import Job, JobStatus, queue
 
 app = FastAPI(title="Cadence Engine")
+
+# The engine is local-only; the desktop webview talks to it cross-origin.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+def _startup() -> None:
+    db.init_db()
 
 
 @app.get("/ping")
@@ -138,6 +152,100 @@ def audio(job_id: str) -> FileResponse:
     if not path.exists():
         raise HTTPException(410, "Result file no longer exists")
     return FileResponse(path, media_type="audio/wav", filename=path.name)
+
+
+# ------------------------- voice training -------------------------
+
+class CreateProfileRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    sample_rate: int = 40000
+
+
+class TrainRequest(BaseModel):
+    epochs: int = Field(default=settings.VOICE_TRAIN_EPOCHS, ge=1, le=1000)
+
+
+def _with_unlock(profile: dict) -> dict:
+    profile["unlock_seconds"] = settings.VOICE_UNLOCK_SECONDS
+    profile["can_train"] = (
+        profile.get("total_seconds", 0) >= settings.VOICE_UNLOCK_SECONDS
+        and profile.get("status") in ("collecting", "ready", "error")
+    )
+    return profile
+
+
+@app.post("/voice/profiles")
+def create_voice_profile(req: CreateProfileRequest) -> dict:
+    return _with_unlock(db.create_profile(req.name, req.sample_rate))
+
+
+@app.get("/voice/profiles")
+def list_voice_profiles() -> list[dict]:
+    return [_with_unlock(p) for p in db.list_profiles()]
+
+
+@app.get("/voice/profiles/{profile_id}")
+def get_voice_profile(profile_id: str) -> dict:
+    profile = db.get_profile(profile_id)
+    if profile is None:
+        raise HTTPException(404, "No such voice profile")
+    return _with_unlock(profile)
+
+
+@app.delete("/voice/profiles/{profile_id}")
+def delete_voice_profile(profile_id: str) -> dict:
+    db.delete_profile(profile_id)
+    return {"deleted": profile_id}
+
+
+@app.post("/voice/profiles/{profile_id}/takes")
+async def upload_take(profile_id: str, request: Request, script_index: int | None = None) -> dict:
+    body = await request.body()
+    if not body:
+        raise HTTPException(422, "Empty request body; send WAV bytes")
+    try:
+        take = voice_service.save_take(profile_id, body, script_index)
+    except voice_service.VoiceError as exc:
+        raise HTTPException(422, str(exc))
+    return {"take": take, "profile": _with_unlock(db.get_profile(profile_id))}
+
+
+@app.get("/voice/profiles/{profile_id}/takes")
+def get_takes(profile_id: str) -> list[dict]:
+    if db.get_profile(profile_id) is None:
+        raise HTTPException(404, "No such voice profile")
+    return db.list_takes(profile_id)
+
+
+@app.delete("/voice/takes/{take_id}")
+def delete_take(take_id: str) -> dict:
+    voice_service.remove_take(take_id)
+    return {"deleted": take_id}
+
+
+@app.post("/voice/profiles/{profile_id}/train")
+async def train_voice(profile_id: str, req: TrainRequest) -> dict:
+    profile = db.get_profile(profile_id)
+    if profile is None:
+        raise HTTPException(404, "No such voice profile")
+    if profile["status"] == "training":
+        raise HTTPException(409, "This voice is already training")
+    if not settings.MOCK and profile["total_seconds"] < settings.VOICE_UNLOCK_SECONDS:
+        raise HTTPException(
+            409,
+            f"Need {settings.VOICE_UNLOCK_SECONDS}s of audio, have "
+            f"{int(profile['total_seconds'])}s",
+        )
+
+    async def runner(job: Job) -> None:
+        try:
+            await voice_service.train(job, profile_id, req.epochs)
+        except Exception as exc:  # noqa: BLE001 - surface failure on the profile too
+            voice_service.mark_failed(profile_id, str(exc))
+            raise
+
+    job = queue.submit(Job(kind="voice-train", params={"profile_id": profile_id}), runner)
+    return {"job_id": job.id, "profile_id": profile_id}
 
 
 @app.on_event("shutdown")

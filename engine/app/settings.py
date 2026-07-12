@@ -13,6 +13,15 @@ MOCK = os.getenv("CADENCE_MOCK", "0") == "1"
 # Where generated and converted audio lands.
 OUTPUT_DIR = Path(os.getenv("CADENCE_OUTPUT_DIR", ENGINE_ROOT / "output"))
 
+# Local database and raw voice recordings.
+DB_PATH = Path(os.getenv("CADENCE_DB_PATH", ENGINE_ROOT / "cadence.db"))
+VOICE_DATA_DIR = Path(os.getenv("CADENCE_VOICE_DATA_DIR", ENGINE_ROOT / "voice_data"))
+
+# Clean speech required before voice training unlocks (seconds).
+VOICE_UNLOCK_SECONDS = int(os.getenv("CADENCE_VOICE_UNLOCK_SECONDS", "600"))
+# Default RVC training length; a real voice wants more, tests override this.
+VOICE_TRAIN_EPOCHS = int(os.getenv("CADENCE_VOICE_TRAIN_EPOCHS", "100"))
+
 # ACE-Step vendor install and its API server.
 ACESTEP_DIR = Path(os.getenv("CADENCE_ACESTEP_DIR", ENGINE_ROOT / "vendor" / "ACE-Step-1.5"))
 ACESTEP_PORT = int(os.getenv("CADENCE_ACESTEP_PORT", "8001"))

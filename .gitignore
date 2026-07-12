@@ -11,6 +11,8 @@ engine/__pycache__/
 engine/**/__pycache__/
 engine/vendor/
 engine/output/
+engine/voice_data/
+engine/cadence.db
 
 # Generated content
 *.wav
