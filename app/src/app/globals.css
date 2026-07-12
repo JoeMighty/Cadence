@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Cadence palette (light mode). Dark mode is a Phase 6 item. */
+/* Cadence palette. Light is the default; dark is applied via data-theme. */
 :root {
   --background: #fafafa;
   --surface: #ffffff;
@@ -10,6 +10,19 @@
   --accent: #5856d6;
   --success: #34c759;
   --error: #ff3b30;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --background: #1c1c1e;
+  --surface: #2c2c2e;
+  --foreground: #f5f5f7;
+  --foreground-secondary: #aeaeb2;
+  --border: #3a3a3c;
+  --accent: #7d7aff;
+  --success: #30d158;
+  --error: #ff453a;
+  color-scheme: dark;
 }
 
 @theme inline {

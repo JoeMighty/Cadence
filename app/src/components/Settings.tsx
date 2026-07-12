@@ -11,6 +11,7 @@ import {
   type Settings as SettingsData,
   type SystemInfo,
 } from "@/lib/engine";
+import Loading from "@/components/Loading";
 
 const KEYS: { name: SecretName; label: string; hint: string }[] = [
   { name: "claude", label: "Claude", hint: "Better multilingual lyrics" },
@@ -60,6 +61,10 @@ export default function Settings() {
         </div>
       )}
 
+      {!settings && !error && <Loading />}
+
+      {settings && (
+        <>
       {/* text provider */}
       <Section title="Text provider" subtitle="Who writes the lyrics and style">
         <div className="flex gap-2">
@@ -146,6 +151,8 @@ export default function Settings() {
           </p>
         </div>
       </Section>
+        </>
+      )}
     </div>
   );
 }

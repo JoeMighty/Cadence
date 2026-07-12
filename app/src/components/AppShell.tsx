@@ -58,17 +58,20 @@ export default function AppShell() {
             </button>
           ))}
         </nav>
-        <div className="mt-auto flex items-center gap-2 px-5 py-4 font-mono text-xs text-foreground-secondary">
-          <span
-            className={`h-2 w-2 rounded-full ${
-              engine === "online"
-                ? "bg-success"
-                : engine === "offline"
-                  ? "bg-error"
-                  : "bg-foreground-secondary"
-            }`}
-          />
-          {engine === "online" ? "Engine online" : engine === "offline" ? "Engine offline" : "Checking…"}
+        <div className="mt-auto flex items-center justify-between px-5 py-4">
+          <span className="flex items-center gap-2 font-mono text-xs text-foreground-secondary">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                engine === "online"
+                  ? "bg-success"
+                  : engine === "offline"
+                    ? "bg-error"
+                    : "bg-foreground-secondary"
+              }`}
+            />
+            {engine === "online" ? "Engine online" : engine === "offline" ? "Engine offline" : "Checking…"}
+          </span>
+          <ThemeToggle />
         </div>
       </aside>
 
@@ -96,6 +99,42 @@ function WaveMark({ large = false }: { large?: boolean }) {
         <line x1="18.02" y1="8.47" x2="19.26" y2="3.83" />
       </g>
     </svg>
+  );
+}
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    setTheme((document.documentElement.dataset.theme as "light" | "dark") || "light");
+  }, []);
+
+  function toggle() {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem("cadence-theme", next);
+    } catch {}
+    setTheme(next);
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      aria-label="Toggle color theme"
+      className="flex h-7 w-7 items-center justify-center rounded-lg text-foreground-secondary transition-colors hover:bg-background hover:text-foreground"
+    >
+      {theme === "dark" ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+        </svg>
+      )}
+    </button>
   );
 }
 

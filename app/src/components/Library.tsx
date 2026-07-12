@@ -8,6 +8,7 @@ import {
   trackExportUrl,
   type Track,
 } from "@/lib/engine";
+import Loading from "@/components/Loading";
 
 function when(ts: number): string {
   return new Date(ts * 1000).toLocaleString(undefined, {
@@ -57,6 +58,8 @@ export default function Library({ goToGenerate }: { goToGenerate: () => void }) 
           {error}
         </div>
       )}
+
+      {tracks === null && !error && <Loading />}
 
       {tracks && tracks.length === 0 && !error && (
         <div className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center">
