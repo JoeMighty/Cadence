@@ -5,6 +5,8 @@ description = "Cadence local engine — music generation and voice conversion, s
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "anthropic>=0.116.0",
     "fastapi>=0.139.0",
+    "keyring>=25.7.0",
     "uvicorn[standard]>=0.51.0",
 ]

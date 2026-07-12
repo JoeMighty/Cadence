@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { getHealth } from "@/lib/engine";
 import Generate from "@/components/Generate";
+import Settings from "@/components/Settings";
 import VoiceSetup from "@/components/VoiceSetup";
 
 type View = "generate" | "voice" | "library" | "settings";
@@ -74,7 +75,7 @@ export default function AppShell() {
         {view === "generate" && <Generate goToVoice={() => setView("voice")} />}
         {view === "voice" && <VoiceSetup />}
         {view === "library" && <Placeholder title="Library" phase="Phase 5" />}
-        {view === "settings" && <Placeholder title="Settings" phase="Phase 4" />}
+        {view === "settings" && <Settings />}
       </main>
     </div>
   );

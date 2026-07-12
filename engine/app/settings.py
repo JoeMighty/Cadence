@@ -36,6 +36,9 @@ APPLIO_DIR = Path(os.getenv("CADENCE_APPLIO_DIR", ENGINE_ROOT / "vendor" / "Appl
 OLLAMA_URL = os.getenv("CADENCE_OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("CADENCE_OLLAMA_MODEL", "qwen3.5:9b")
 
+# Cloud text provider (optional). Claude, keyed from the OS keychain.
+CLAUDE_MODEL = os.getenv("CADENCE_CLAUDE_MODEL", "claude-opus-4-8")
+
 
 def acestep_python() -> Path:
     return ACESTEP_DIR / ".venv" / "Scripts" / "python.exe"

@@ -27,7 +27,9 @@ from . import (
     applio_service,
     db,
     mock_audio,
+    secrets,
     settings,
+    system_info,
     text_provider,
     voice_service,
 )
@@ -367,6 +369,61 @@ def track_audio(track_id: str) -> FileResponse:
     if not path.exists():
         raise HTTPException(410, "Track file no longer exists")
     return FileResponse(path, media_type="audio/wav", filename=path.name)
+
+
+# ---------------------- settings & system -----------------------
+
+class SettingsUpdate(BaseModel):
+    text_provider: Optional[str] = None
+
+
+class SecretUpdate(BaseModel):
+    value: str = Field(min_length=1)
+
+
+def _settings_payload() -> dict:
+    return {
+        "text_provider": db.get_setting("text_provider", "ollama"),
+        "secrets": secrets.status(),
+    }
+
+
+@app.get("/settings")
+def get_settings() -> dict:
+    return _settings_payload()
+
+
+@app.put("/settings")
+def update_settings(req: SettingsUpdate) -> dict:
+    if req.text_provider is not None:
+        if req.text_provider not in ("ollama", "claude"):
+            raise HTTPException(422, "text_provider must be 'ollama' or 'claude'")
+        db.set_setting("text_provider", req.text_provider)
+    return _settings_payload()
+
+
+@app.get("/secrets")
+def get_secrets() -> dict:
+    return secrets.status()
+
+
+@app.put("/secrets/{name}")
+def put_secret(name: str, req: SecretUpdate) -> dict:
+    if name not in secrets.KNOWN:
+        raise HTTPException(404, f"Unknown secret '{name}'")
+    secrets.set_secret(name, req.value.strip())
+    return secrets.status()
+
+
+@app.delete("/secrets/{name}")
+def delete_secret(name: str) -> dict:
+    secrets.clear_secret(name)
+    return secrets.status()
+
+
+@app.get("/system")
+def system() -> dict:
+    return {"gpu": system_info.gpu_status(), "ollama": system_info.ollama_status()}
 
 
 @app.on_event("shutdown")

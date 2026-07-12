@@ -152,3 +152,56 @@ export async function listTracks(): Promise<Track[]> {
 export function trackAudioUrl(trackId: string): string {
   return `${BASE}/tracks/${trackId}/audio`;
 }
+
+// ---------- settings / secrets / system ----------
+
+export type SecretName = "claude" | "suno" | "elevenlabs";
+
+export interface Settings {
+  text_provider: "ollama" | "claude";
+  secrets: Record<SecretName, boolean>;
+}
+
+export interface SystemInfo {
+  gpu: {
+    available: boolean;
+    device: string;
+    cuda?: boolean;
+    vram_total_mb?: number;
+    vram_used_mb?: number;
+    driver?: string;
+  };
+  ollama: { reachable: boolean; model: string; model_present: boolean };
+}
+
+export async function getSettings(): Promise<Settings> {
+  return json(await fetch(`${BASE}/settings`));
+}
+
+export async function updateSettings(text_provider: "ollama" | "claude"): Promise<Settings> {
+  return json(
+    await fetch(`${BASE}/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text_provider }),
+    }),
+  );
+}
+
+export async function getSystem(): Promise<SystemInfo> {
+  return json(await fetch(`${BASE}/system`));
+}
+
+export async function putSecret(name: SecretName, value: string): Promise<Record<SecretName, boolean>> {
+  return json(
+    await fetch(`${BASE}/secrets/${name}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value }),
+    }),
+  );
+}
+
+export async function deleteSecret(name: SecretName): Promise<Record<SecretName, boolean>> {
+  return json(await fetch(`${BASE}/secrets/${name}`, { method: "DELETE" }));
+}

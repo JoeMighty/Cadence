@@ -39,6 +39,11 @@ CREATE TABLE IF NOT EXISTS voice_takes (
     FOREIGN KEY (profile_id) REFERENCES voice_profiles(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
+
 CREATE TABLE IF NOT EXISTS tracks (
     id               TEXT PRIMARY KEY,
     prompt           TEXT NOT NULL,
@@ -156,6 +161,29 @@ def get_take(take_id: str) -> Optional[dict[str, Any]]:
 def delete_take(take_id: str) -> None:
     with _connect() as conn:
         conn.execute("DELETE FROM voice_takes WHERE id = ?", (take_id,))
+
+
+# ---------- settings ----------
+
+def get_setting(key: str, default: Optional[str] = None) -> Optional[str]:
+    with _connect() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else default
+
+
+def set_setting(key: str, value: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+
+
+def all_settings() -> dict[str, str]:
+    with _connect() as conn:
+        rows = conn.execute("SELECT key, value FROM settings").fetchall()
+        return {r["key"]: r["value"] for r in rows}
 
 
 # ---------- tracks ----------

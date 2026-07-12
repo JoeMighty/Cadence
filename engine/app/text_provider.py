@@ -12,7 +12,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from . import settings
+from . import db, secrets, settings
 
 
 class TextProviderError(RuntimeError):
@@ -56,7 +56,7 @@ def _normalize_lang(value: str) -> str:
 
 
 def structure_prompt(prompt: str, instrumental: bool = False) -> dict[str, Any]:
-    """Return {caption, lyrics, vocal_language, bpm}. Raises on provider failure."""
+    """Return {caption, lyrics, vocal_language, bpm} using the selected provider."""
     if settings.MOCK:
         return {
             "caption": f"warm indie folk, gentle acoustic guitar, {prompt[:40]}",
@@ -64,7 +64,18 @@ def structure_prompt(prompt: str, instrumental: bool = False) -> dict[str, Any]:
             "vocal_language": "en",
             "bpm": 92,
         }
+    if db.get_setting("text_provider", "ollama") == "claude":
+        return _via_claude(prompt, instrumental)
+    return _via_ollama(prompt, instrumental)
 
+
+def _user_message(prompt: str, instrumental: bool) -> str:
+    if not instrumental:
+        return prompt
+    return f"{prompt}\n\nThis is an instrumental piece: return an empty string for lyrics."
+
+
+def _via_ollama(prompt: str, instrumental: bool = False) -> dict[str, Any]:
     user = prompt if not instrumental else (
         f"{prompt}\n\nThis is an instrumental piece: return an empty string for lyrics."
     )
@@ -100,9 +111,58 @@ def structure_prompt(prompt: str, instrumental: bool = False) -> dict[str, Any]:
     except json.JSONDecodeError as exc:
         raise TextProviderError(f"Text provider returned invalid JSON: {exc}") from exc
 
+    return _finalize(obj, instrumental)
+
+
+def _finalize(obj: dict[str, Any], instrumental: bool) -> dict[str, Any]:
     return {
-        "caption": obj.get("caption", "").strip(),
-        "lyrics": "" if instrumental else obj.get("lyrics", "").strip(),
+        "caption": (obj.get("caption") or "").strip(),
+        "lyrics": "" if instrumental else (obj.get("lyrics") or "").strip(),
         "vocal_language": _normalize_lang(obj.get("vocal_language", "en")),
         "bpm": int(obj["bpm"]) if str(obj.get("bpm", "")).strip().isdigit() else None,
     }
+
+
+# Structured-output schema for Claude (subset the API supports: no min/max).
+_CLAUDE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "caption": {"type": "string"},
+        "lyrics": {"type": "string"},
+        "vocal_language": {"type": "string"},
+        "bpm": {"type": "integer"},
+    },
+    "required": ["caption", "lyrics", "vocal_language", "bpm"],
+    "additionalProperties": False,
+}
+
+
+def _via_claude(prompt: str, instrumental: bool = False) -> dict[str, Any]:
+    key = secrets.get_secret("claude")
+    if not key:
+        raise TextProviderError("No Claude API key set. Add one in Settings, or switch to Ollama.")
+    try:
+        import anthropic
+    except ImportError as exc:  # pragma: no cover - dependency is declared
+        raise TextProviderError(f"The anthropic SDK is not installed: {exc}") from exc
+
+    client = anthropic.Anthropic(api_key=key)
+    try:
+        resp = client.messages.create(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=8192,
+            system=_SYSTEM,
+            messages=[{"role": "user", "content": _user_message(prompt, instrumental)}],
+            output_config={"format": {"type": "json_schema", "schema": _CLAUDE_SCHEMA}},
+        )
+    except anthropic.AuthenticationError as exc:
+        raise TextProviderError("Claude rejected the API key. Check it in Settings.") from exc
+    except anthropic.APIError as exc:
+        raise TextProviderError(f"Claude request failed: {exc}") from exc
+
+    text = next((b.text for b in resp.content if b.type == "text"), "")
+    try:
+        obj = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise TextProviderError(f"Claude returned invalid JSON: {exc}") from exc
+    return _finalize(obj, instrumental)
