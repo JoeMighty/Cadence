@@ -3,19 +3,31 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 ENGINE_ROOT = Path(__file__).resolve().parent.parent
+
+# When bundled by PyInstaller, ENGINE_ROOT points into a temp extraction dir,
+# so writable data (db, audio, recordings) goes to a per-user location instead.
+FROZEN = getattr(sys, "frozen", False)
+if FROZEN:
+    DATA_ROOT = Path(
+        os.getenv("CADENCE_DATA_DIR")
+        or Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "Cadence"
+    )
+else:
+    DATA_ROOT = ENGINE_ROOT
 
 # Mock mode: exercise the full job pipeline without GPU models.
 MOCK = os.getenv("CADENCE_MOCK", "0") == "1"
 
 # Where generated and converted audio lands.
-OUTPUT_DIR = Path(os.getenv("CADENCE_OUTPUT_DIR", ENGINE_ROOT / "output"))
+OUTPUT_DIR = Path(os.getenv("CADENCE_OUTPUT_DIR", DATA_ROOT / "output"))
 
 # Local database and raw voice recordings.
-DB_PATH = Path(os.getenv("CADENCE_DB_PATH", ENGINE_ROOT / "cadence.db"))
-VOICE_DATA_DIR = Path(os.getenv("CADENCE_VOICE_DATA_DIR", ENGINE_ROOT / "voice_data"))
+DB_PATH = Path(os.getenv("CADENCE_DB_PATH", DATA_ROOT / "cadence.db"))
+VOICE_DATA_DIR = Path(os.getenv("CADENCE_VOICE_DATA_DIR", DATA_ROOT / "voice_data"))
 
 # Clean speech required before voice training unlocks (seconds).
 VOICE_UNLOCK_SECONDS = int(os.getenv("CADENCE_VOICE_UNLOCK_SECONDS", "600"))

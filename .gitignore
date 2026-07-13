@@ -4,6 +4,11 @@ app/.next/
 app/out/
 app/src-tauri/target/
 app/src-tauri/gen/
+app/src-tauri/binaries/
+
+# PyInstaller (engine sidecar build)
+engine/dist_engine/
+engine/build_engine/
 
 # Python engine
 engine/.venv/

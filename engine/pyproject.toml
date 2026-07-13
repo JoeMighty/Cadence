@@ -10,3 +10,8 @@ dependencies = [
     "keyring>=25.7.0",
     "uvicorn[standard]>=0.51.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.21.0",
+]
