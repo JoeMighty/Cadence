@@ -12,6 +12,8 @@ import {
   type SystemInfo,
 } from "@/lib/engine";
 import Loading from "@/components/Loading";
+import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 
 const KEYS: { name: SecretName; label: string; hint: string }[] = [
   { name: "claude", label: "Claude", hint: "Better multilingual lyrics" },
@@ -19,10 +21,34 @@ const KEYS: { name: SecretName; label: string; hint: string }[] = [
   { name: "elevenlabs", label: "ElevenLabs", hint: "Optional cloud voice (later)" },
 ];
 
+// Newest release (including pre-releases) at the top of the list.
+const RELEASES_API = "https://api.github.com/repos/JoeMighty/Cadence/releases?per_page=1";
+
+type UpdateState =
+  | { kind: "idle" }
+  | { kind: "checking" }
+  | { kind: "latest" }
+  | { kind: "available"; tag: string }
+  | { kind: "error"; message: string };
+
+// True when `latest` ("v0.1.2" / "0.1.2") is a higher version than `current`.
+function isNewer(latest: string, current: string): boolean {
+  const a = latest.replace(/^v/, "").split(".").map(Number);
+  const b = current.replace(/^v/, "").split(".").map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i] ?? 0;
+    const y = b[i] ?? 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
 export default function Settings() {
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [system, setSystem] = useState<SystemInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+  const [update, setUpdate] = useState<UpdateState>({ kind: "idle" });
 
   const load = useCallback(async () => {
     try {
@@ -37,6 +63,29 @@ export default function Settings() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // App version comes from Tauri; harmless no-op in a plain browser.
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => {});
+  }, []);
+
+  async function checkUpdates() {
+    setUpdate({ kind: "checking" });
+    try {
+      const res = await fetch(RELEASES_API, {
+        headers: { Accept: "application/vnd.github+json" },
+      });
+      if (!res.ok) throw new Error(`GitHub returned ${res.status}`);
+      const list: { tag_name?: string }[] = await res.json();
+      const tag = list?.[0]?.tag_name;
+      if (!tag) throw new Error("no releases published yet");
+      setUpdate(
+        version && isNewer(tag, version) ? { kind: "available", tag } : { kind: "latest" },
+      );
+    } catch (e) {
+      setUpdate({ kind: "error", message: e instanceof Error ? e.message : "check failed" });
+    }
+  }
 
   async function setProvider(p: "ollama" | "claude") {
     try {
@@ -134,11 +183,49 @@ export default function Settings() {
         )}
       </Section>
 
-      {/* about */}
+        </>
+      )}
+
+      {/* about — always available, even when the engine is offline */}
       <Section title="About" subtitle="">
         <div className="rounded-xl border border-border bg-surface p-5 text-sm">
-          <p className="text-foreground-secondary">Cadence — local-first AI music, in your own voice.</p>
-          <p className="mt-2">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium">Cadence{version ? ` v${version}` : ""}</p>
+              <p className="mt-0.5 text-foreground-secondary">
+                Local-first AI music, in your own voice.
+              </p>
+            </div>
+            <button
+              onClick={checkUpdates}
+              disabled={update.kind === "checking"}
+              className="h-9 shrink-0 rounded-lg border border-border px-4 text-sm text-foreground-secondary transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+            >
+              {update.kind === "checking" ? "Checking…" : "Check for updates"}
+            </button>
+          </div>
+
+          {update.kind === "latest" && (
+            <p className="mt-3 text-foreground-secondary">You&apos;re on the latest version.</p>
+          )}
+          {update.kind === "available" && (
+            <div className="mt-3 flex items-center justify-between gap-4 rounded-lg border border-accent/30 bg-accent/5 px-4 py-3">
+              <span>
+                <span className="font-medium text-accent">{update.tag}</span> is available.
+              </span>
+              <button
+                onClick={() => invoke("open_releases_page")}
+                className="h-8 shrink-0 rounded-lg bg-accent px-4 text-sm font-medium text-white"
+              >
+                Download
+              </button>
+            </div>
+          )}
+          {update.kind === "error" && (
+            <p className="mt-3 text-error">Couldn&apos;t check for updates: {update.message}</p>
+          )}
+
+          <p className="mt-4 border-t border-border pt-3 text-foreground-secondary">
             Built by{" "}
             <a
               href="https://github.com/JoeMighty/"
@@ -151,8 +238,6 @@ export default function Settings() {
           </p>
         </div>
       </Section>
-        </>
-      )}
     </div>
   );
 }

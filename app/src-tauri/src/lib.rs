@@ -44,6 +44,21 @@ async fn engine_healthy() -> bool {
     .unwrap_or(false)
 }
 
+/// Open the GitHub releases page in the default browser so the user can
+/// download a newer installer. Fixed URL — nothing from the webview is run.
+#[tauri::command]
+fn open_releases_page() {
+  #[cfg(windows)]
+  {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let _ = std::process::Command::new("cmd")
+      .args(["/C", "start", "", "https://github.com/JoeMighty/Cadence/releases"])
+      .creation_flags(CREATE_NO_WINDOW)
+      .spawn();
+  }
+}
+
 /// Start the bundled engine sidecar, unless an engine is already running
 /// (e.g. one started by hand during development).
 fn start_engine(app: tauri::AppHandle) {
@@ -90,7 +105,7 @@ pub fn run() {
       start_engine(app.handle().clone());
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![ping_engine])
+    .invoke_handler(tauri::generate_handler![ping_engine, open_releases_page])
     .build(tauri::generate_context!())
     .expect("error while running tauri application")
     .run(|app_handle, event| {
