@@ -36,7 +36,7 @@ export default function AppShell() {
   }, []);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-screen">
       <aside className="flex w-56 flex-col border-r border-border bg-surface">
         <div className="flex items-center gap-2.5 px-5 py-5">
           <WaveMark />
@@ -75,7 +75,7 @@ export default function AppShell() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex flex-1 flex-col overflow-y-auto">
         {view === "generate" && <Generate goToVoice={() => setView("voice")} />}
         {view === "voice" && <VoiceSetup />}
         {view === "library" && <Library goToGenerate={() => setView("generate")} />}

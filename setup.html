@@ -53,24 +53,39 @@
       <h1>Install Cadence</h1>
       <p class="lede">Download the Windows installer, or run from source. Either way, full music generation needs the local backends set up — the installer ships the app and engine, not the multi-gigabyte models.</p>
       <div class="hero-actions" style="margin-top: 26px;">
-        <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.0/Cadence_0.1.0_x64_en-US.msi">Download for Windows (.msi)</a>
-        <a class="btn btn-ghost" href="https://github.com/JoeMighty/Cadence/releases/tag/v0.1.0" target="_blank" rel="noopener">Release notes</a>
+        <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.1/Cadence_0.1.1_x64_en-US.msi">Download for Windows (.msi)</a>
+        <a class="btn btn-ghost" href="https://github.com/JoeMighty/Cadence/releases/tag/v0.1.1" target="_blank" rel="noopener">Release notes</a>
       </div>
-      <p class="muted" style="margin-top: 12px; font-size: var(--step--1);">Pre-release · v0.1.0 · 23&nbsp;MB · unsigned, so SmartScreen warns (More info → Run anyway). The app starts and stops its own engine.</p>
+      <p class="muted" style="margin-top: 12px; font-size: var(--step--1);">Pre-release · v0.1.1 · 23&nbsp;MB · unsigned, so SmartScreen warns (More info → Run anyway). The app starts and stops its own engine.</p>
     </section>
 
     <section class="container" style="padding-bottom: 0;">
       <div class="callout reveal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3v.01"/></svg>
-        <p>What works today: the full loop — record and train a voice, generate a song from a prompt in that voice, manage the provider, API keys, and GPU status in Settings, and browse, play, and export past tracks in the Library. Dark mode and installer polish come in Phases 6 and 7 — watch the <a href="roadmap.html">roadmap</a>.</p>
+        <p>What works today: the full loop — record and train a voice, generate a song from a prompt (or paste your own lyrics) in that voice, manage the provider, API keys, and GPU status in Settings, and browse, play, and export past tracks in the Library. Dark mode and the Windows installer have shipped; cross-platform builds are next on the <a href="roadmap.html">roadmap</a>.</p>
       </div>
+    </section>
+
+    <!-- backends for the installer -->
+    <section class="section container">
+      <div class="section-head reveal">
+        <span class="overline">After installing</span>
+        <h2>Set up the AI models</h2>
+      </div>
+      <p class="reveal" style="max-width: 65ch; color: var(--muted); margin-bottom: 20px;">The installer ships the app and its engine, but not the ~10&nbsp;GB music and voice models. Run the one-time setup script — it installs ACE-Step and Applio into <span style="font-family:var(--font-mono);font-size:0.85em;">%LOCALAPPDATA%\Cadence\vendor</span>, where Cadence looks for them. You need <strong>git</strong> and <strong>uv</strong> on your PATH.</p>
+      <div class="code reveal">
+        <div class="code-head"><span>PowerShell</span><button class="copy-btn" type="button">Copy</button></div>
+        <pre>git clone https://github.com/JoeMighty/Cadence.git
+powershell -ExecutionPolicy Bypass -File Cadence\scripts\setup-backends.ps1</pre>
+      </div>
+      <p class="muted reveal" style="margin-top: 14px; font-size: var(--step--1);">Already have a source checkout with the backends built? Point Cadence at it instantly instead of rebuilding: <span style="font-family:var(--font-mono);font-size:0.8em;">setup-backends.ps1 -LinkFrom .\engine\vendor</span>. Either way, the first generation downloads the model weights (~10&nbsp;GB).</p>
     </section>
 
     <!-- requirements -->
     <section class="section container">
       <div class="section-head reveal">
         <span class="overline">Before you start</span>
-        <h2>Requirements</h2>
+        <h2>Requirements (from source)</h2>
       </div>
       <div class="table-wrap reveal">
         <table class="req-table">

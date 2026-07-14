@@ -27,8 +27,7 @@ async def convert(params: dict[str, Any]) -> dict[str, Any]:
     python = settings.applio_python()
     if not python.exists():
         raise ApplioError(
-            f"Applio venv not found at {python}. "
-            "Create it and install requirements.txt inside engine/vendor/Applio first."
+            f"The voice model (Applio) isn't installed yet. {settings.setup_hint()}"
         )
 
     input_path = Path(params["input_path"])

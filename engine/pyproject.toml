@@ -1,6 +1,6 @@
 [project]
 name = "cadence-engine"
-version = "0.1.0"
+version = "0.1.1"
 description = "Cadence local engine — music generation and voice conversion, served over localhost"
 readme = "README.md"
 requires-python = ">=3.11"

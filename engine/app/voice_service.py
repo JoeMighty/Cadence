@@ -127,7 +127,7 @@ async def train(job: Job, profile_id: str, epochs: int) -> None:
 
     python = settings.applio_python()
     if not python.exists():
-        raise VoiceError(f"Applio venv not found at {python}")
+        raise VoiceError(f"The voice model (Applio) isn't installed yet. {settings.setup_hint()}")
     dataset = _takes_dir(profile_id)
     if not any(dataset.glob("*.wav")):
         raise VoiceError("No recordings to train on")

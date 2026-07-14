@@ -270,6 +270,7 @@ class ComposeRequest(BaseModel):
     instrumental: bool = False
     duration: Optional[float] = Field(default=None, ge=10, le=600)
     thinking: bool = True
+    lyrics: str = ""
 
 
 @app.post("/compose")
@@ -285,11 +286,23 @@ async def compose(req: ComposeRequest) -> dict:
             raise HTTPException(409, f"Voice '{profile['name']}' is not trained yet")
 
     async def runner(job: Job) -> None:
-        job.update(status=JobStatus.GENERATING, detail="Writing lyrics")
-        structured = await asyncio.to_thread(
-            text_provider.structure_prompt, req.prompt, req.instrumental
+        user_lyrics = "" if req.instrumental else req.lyrics.strip()
+        job.update(
+            status=JobStatus.GENERATING,
+            detail="Preparing" if user_lyrics else "Writing lyrics",
         )
+        try:
+            structured = await asyncio.to_thread(
+                text_provider.structure_prompt, req.prompt, req.instrumental
+            )
+        except text_provider.TextProviderError:
+            # With user-supplied lyrics we only needed a style caption, so fall
+            # back to the prompt rather than failing when no text provider is up.
+            if not user_lyrics:
+                raise
+            structured = {"caption": req.prompt, "lyrics": "", "vocal_language": "en", "bpm": None}
         caption = structured["caption"] or req.prompt
+        lyrics = user_lyrics or structured["lyrics"]
 
         job.update(status=JobStatus.GENERATING, detail="Generating music")
         if settings.MOCK:
@@ -299,7 +312,7 @@ async def compose(req: ComposeRequest) -> dict:
             gen = await acestep_service.generate(
                 {
                     "prompt": caption,
-                    "lyrics": structured["lyrics"],
+                    "lyrics": lyrics,
                     "vocal_language": structured["vocal_language"],
                     "bpm": structured["bpm"],
                     "audio_duration": req.duration,
@@ -355,7 +368,7 @@ async def compose(req: ComposeRequest) -> dict:
         track = db.create_track(
             prompt=req.prompt,
             caption=caption,
-            lyrics=structured["lyrics"],
+            lyrics=lyrics,
             vocal_language=structured["vocal_language"],
             bpm=structured["bpm"],
             audio_path=final_path,

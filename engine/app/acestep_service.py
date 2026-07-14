@@ -57,8 +57,7 @@ def _spawn() -> None:
     python = settings.acestep_python()
     if not python.exists():
         raise AceStepError(
-            f"ACE-Step venv not found at {python}. "
-            "Run 'uv sync' inside engine/vendor/ACE-Step-1.5 first."
+            f"The music model (ACE-Step) isn't installed yet. {settings.setup_hint()}"
         )
     _process = subprocess.Popen(
         [str(python), "-m", "acestep.api_server", "--port", str(settings.ACESTEP_PORT)],

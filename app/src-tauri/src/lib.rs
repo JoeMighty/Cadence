@@ -59,10 +59,10 @@ fn start_engine(app: tauri::AppHandle) {
         return;
       }
     };
-    let mut command = command.env("CADENCE_PORT", "8000");
-    if let Ok(dir) = app.path().app_data_dir() {
-      command = command.env("CADENCE_DATA_DIR", dir.to_string_lossy().to_string());
-    }
+    // The frozen engine chooses its own per-user data dir (%LOCALAPPDATA%\Cadence)
+    // — the same place scripts/setup-backends installs the AI models — so we
+    // deliberately don't override CADENCE_DATA_DIR here.
+    let command = command.env("CADENCE_PORT", "8000");
     match command.spawn() {
       Ok((mut rx, child)) => {
         app.state::<EngineProcess>().0.lock().unwrap().replace(child);

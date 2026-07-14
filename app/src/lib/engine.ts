@@ -39,7 +39,15 @@ async function json<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function getHealth(): Promise<{ status: string; mock: boolean }> {
+export interface Health {
+  status: string;
+  mock: boolean;
+  acestep_installed: boolean;
+  acestep_running: boolean;
+  applio_installed: boolean;
+}
+
+export async function getHealth(): Promise<Health> {
   return json(await fetch(`${BASE}/health`));
 }
 
@@ -129,6 +137,7 @@ export interface ComposeOptions {
   voice_profile_id?: string;
   instrumental?: boolean;
   duration?: number;
+  lyrics?: string;
 }
 
 export async function compose(opts: ComposeOptions): Promise<{ job_id: string }> {

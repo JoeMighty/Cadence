@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   compose,
+  getHealth,
   getJob,
   listProfiles,
   trackAudioUrl,
@@ -13,6 +14,32 @@ import {
 
 const STEPS_VOICE = ["Writing lyrics", "Generating music", "Converting to your voice"];
 const STEPS_INSTRUMENTAL = ["Writing lyrics", "Generating music"];
+
+// Shown when the user opens "Insert example". Section tags drive the song
+// structure; the model reads these, not chord names.
+const EXAMPLE_LYRICS = `[Verse]
+City lights are bleeding through the rain
+Every window holds another name
+Footsteps echo down an empty street
+Chasing something I can't quite complete
+
+[Chorus]
+Hold the line, we're running out of time
+Neon signs are painting us in gold
+Hold the line, the city's yours and mine
+A quiet song before the night grows cold
+
+[Verse]
+Coffee going cold on the windowsill
+Morning feels a thousand miles uphill
+
+[Bridge]
+When the sun comes up we'll be alright
+Trading all these shadows for the light
+
+[Chorus]
+Hold the line, we're running out of time
+Neon signs are painting us in gold`;
 
 function stepIndex(detail: string): number {
   if (detail.startsWith("Writing")) return 0;
@@ -27,6 +54,8 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   const [voiceId, setVoiceId] = useState<string>("instrumental");
   const [advanced, setAdvanced] = useState(false);
   const [duration, setDuration] = useState(30);
+  const [lyrics, setLyrics] = useState("");
+  const [backendReady, setBackendReady] = useState(true);
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +72,12 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
       setProfiles(list);
       const firstReady = list.find((p) => p.status === "ready");
       if (firstReady) setVoiceId((v) => (v === "instrumental" ? firstReady.id : v));
+    } catch {
+      /* engine offline; the shell surfaces this */
+    }
+    try {
+      const health = await getHealth();
+      setBackendReady(health.mock || health.acestep_installed);
     } catch {
       /* engine offline; the shell surfaces this */
     }
@@ -85,6 +120,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
         instrumental,
         voice_profile_id: instrumental ? undefined : voiceId,
         duration,
+        lyrics: !instrumental && lyrics.trim() ? lyrics.trim() : undefined,
       });
       setJobId(res.job_id);
     } catch (e) {
@@ -95,7 +131,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-8 py-10">
+    <div className="mx-auto my-auto w-full max-w-3xl px-8 py-10">
       <header className="mb-8">
         <p className="font-mono text-xs uppercase tracking-widest text-foreground-secondary">
           Generate
@@ -104,6 +140,22 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
           Describe a song, hear it in your voice
         </h1>
       </header>
+
+      {!backendReady && (
+        <div className="mb-6 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+          The music backend isn&apos;t installed yet, so generation won&apos;t run. Set it up once
+          with <code className="font-mono text-xs">scripts/setup-backends</code> — see the{" "}
+          <a
+            href="https://joemighty.github.io/Cadence/setup.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-accent hover:underline"
+          >
+            setup guide
+          </a>
+          .
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 rounded-xl border border-error/30 bg-error/5 px-4 py-3 text-sm text-error">
@@ -165,20 +217,51 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
           {advanced ? "− Advanced" : "+ Advanced"}
         </button>
         {advanced && (
-          <div className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
-            <label className="text-sm text-foreground-secondary">Length</label>
-            <select
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              disabled={running}
-              className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
-            >
-              {[15, 30, 60, 90, 120].map((s) => (
-                <option key={s} value={s}>
-                  {s}s
-                </option>
-              ))}
-            </select>
+          <div className="mt-3 flex flex-col gap-4 rounded-xl border border-border bg-surface px-4 py-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-foreground-secondary">Length</label>
+              <select
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+                disabled={running}
+                className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
+              >
+                {[15, 30, 60, 90, 120].map((s) => (
+                  <option key={s} value={s}>
+                    {s}s
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!instrumental && (
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-sm text-foreground-secondary">Lyrics (optional)</label>
+                  <button
+                    onClick={() => setLyrics(EXAMPLE_LYRICS)}
+                    className="font-mono text-xs text-accent hover:underline"
+                  >
+                    Insert example
+                  </button>
+                </div>
+                <textarea
+                  value={lyrics}
+                  onChange={(e) => setLyrics(e.target.value)}
+                  disabled={running}
+                  rows={7}
+                  placeholder="Leave empty to let Cadence write the lyrics, or paste your own…"
+                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm leading-relaxed outline-none focus:border-accent"
+                />
+                <p className="mt-1.5 text-xs leading-relaxed text-foreground-secondary">
+                  Shape the structure with <span className="font-mono">[Verse]</span>,{" "}
+                  <span className="font-mono">[Chorus]</span>, and{" "}
+                  <span className="font-mono">[Bridge]</span> tags. Keep lines short and singable;
+                  put the genre, tempo, and instruments in the prompt above — the model reads
+                  section tags, not chords.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
