@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Setup — Cadence</title>
-  <meta name="description" content="Run Cadence from source on Windows. Prerequisites, install steps, and verification.">
+  <meta name="description" content="Install Cadence on Windows: download, set up the models, and make your first song. Quick start, a step-by-step guide, troubleshooting, and building from source.">
   <link rel="canonical" href="https://joemighty.github.io/Cadence/setup.html">
   <meta property="og:site_name" content="Cadence">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Setup — Cadence">
-  <meta property="og:description" content="Run Cadence from source on Windows. Prerequisites, install steps, and verification.">
+  <meta property="og:description" content="Install Cadence on Windows: download, set up the models, and make your first song. Quick start, a step-by-step guide, troubleshooting, and building from source.">
   <meta property="og:url" content="https://joemighty.github.io/Cadence/setup.html">
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
@@ -66,27 +66,91 @@
       </div>
     </section>
 
-    <!-- backends for the installer -->
-    <section class="section container">
+    <!-- quick start (the simple guide) -->
+    <section class="section container" style="padding-bottom: 0;">
       <div class="section-head reveal">
-        <span class="overline">After installing</span>
-        <h2>Set up the AI models</h2>
+        <span class="overline">The short version</span>
+        <h2>Quick start</h2>
       </div>
-      <p class="reveal" style="max-width: 65ch; color: var(--muted); margin-bottom: 20px;">The installer ships the app and its engine, but not the ~10&nbsp;GB music and voice models. Run the one-time setup script — it installs ACE-Step and Applio into <span style="font-family:var(--font-mono);font-size:0.85em;">%LOCALAPPDATA%\Cadence\vendor</span>, where Cadence looks for them. You need <strong>git</strong> and <strong>uv</strong> on your PATH.</p>
-      <div class="code reveal">
-        <div class="code-head"><span>PowerShell</span><button class="copy-btn" type="button">Copy</button></div>
-        <pre>git clone https://github.com/JoeMighty/Cadence.git
-powershell -ExecutionPolicy Bypass -File Cadence\scripts\setup-backends.ps1</pre>
+      <div class="callout reveal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg>
+        <ol style="margin:0; padding-left: 20px; line-height: 1.9;">
+          <li><strong>Download</strong> the <code>.msi</code> and install it. Windows SmartScreen warns because it's unsigned — click <strong>More info → Run anyway</strong>.</li>
+          <li><strong>Set up the models once</strong> with <code>setup-backends.ps1</code> (needs <code>git</code> and <code>uv</code>) — full command in the next section.</li>
+          <li><strong>Open Cadence.</strong> Wait for the dot in the sidebar to turn green: <em>Engine online</em>.</li>
+          <li><strong>Type a prompt and click Generate.</strong> The first song downloads the models (~10&nbsp;GB), then plays.</li>
+        </ol>
       </div>
-      <p class="muted reveal" style="margin-top: 14px; font-size: var(--step--1);">Already have a source checkout with the backends built? Point Cadence at it instantly instead of rebuilding: <span style="font-family:var(--font-mono);font-size:0.8em;">setup-backends.ps1 -LinkFrom .\engine\vendor</span>. Either way, the first generation downloads the model weights (~10&nbsp;GB).</p>
     </section>
 
-    <!-- requirements -->
+    <!-- getting started, step by step (installer) -->
     <section class="section container">
       <div class="section-head reveal">
-        <span class="overline">Before you start</span>
-        <h2>Requirements (from source)</h2>
+        <span class="overline">Step by step</span>
+        <h2>Getting started</h2>
       </div>
+
+      <div class="setup-step reveal">
+        <span class="setup-num">1</span>
+        <div>
+          <h3>Download and install</h3>
+          <p>Grab the installer and run it. Because it isn't code-signed yet, Windows SmartScreen shows a blue warning — click <strong>More info</strong>, then <strong>Run anyway</strong>. It installs to <code>C:\Program&nbsp;Files\Cadence</code>.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.2/Cadence_0.1.2_x64_en-US.msi">Download for Windows (.msi)</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-step reveal">
+        <span class="setup-num">2</span>
+        <div>
+          <h3>Set up the AI models (one time)</h3>
+          <p>The installer ships the app and its engine, but not the ~10&nbsp;GB music and voice models. This script installs them into <code>%LOCALAPPDATA%\Cadence\vendor</code>, where Cadence looks. You need <code>git</code> and <code>uv</code> on your PATH. Open PowerShell and run:</p>
+          <div class="code">
+            <div class="code-head"><span>PowerShell</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre>git clone https://github.com/JoeMighty/Cadence.git
+powershell -ExecutionPolicy Bypass -File Cadence\scripts\setup-backends.ps1</pre>
+          </div>
+          <p class="muted" style="margin-top: 14px; font-size: var(--step--1);">Already built the backends in a source checkout? Link to them instantly instead of rebuilding: <code>setup-backends.ps1 -LinkFrom .\engine\vendor</code>.</p>
+        </div>
+      </div>
+
+      <div class="setup-step reveal">
+        <span class="setup-num">3</span>
+        <div>
+          <h3>Open Cadence and check it's live</h3>
+          <p>Launch <strong>Cadence</strong> from the Start menu. It starts and stops its own engine — nothing to run in a terminal. Watch the dot at the bottom of the sidebar: it turns <strong>green &ldquo;Engine online&rdquo;</strong> within about 10&ndash;20 seconds.</p>
+        </div>
+      </div>
+
+      <div class="setup-step reveal">
+        <span class="setup-num">4</span>
+        <div>
+          <h3>Make your first song</h3>
+          <p>Type a description like <em>&ldquo;a calm lo-fi piano loop&rdquo;</em>, leave the voice on <strong>Instrumental</strong>, and click <strong>Generate</strong>. The first run shows <em>&ldquo;Starting music model server&rdquo;</em> for ~20&nbsp;seconds while the model loads, then downloads the model weights (~10&nbsp;GB, first time only) and plays the result.</p>
+        </div>
+      </div>
+
+      <div class="setup-step reveal">
+        <span class="setup-num">5</span>
+        <div>
+          <h3>Optional — voice, lyrics, and better wording</h3>
+          <p>Train your own voice on the <strong>Voice</strong> tab, then pick it instead of Instrumental. To write your own lyrics, open <strong>+&nbsp;Advanced</strong> under the prompt and use the <strong>Lyrics</strong> box (with an <em>Insert example</em> template) — shape it with <code>[Verse]</code>, <code>[Chorus]</code>, and <code>[Bridge]</code> tags. For sharper multilingual lyrics, add a Claude key in <strong>Settings</strong>, or install a local model:</p>
+          <div class="code">
+            <div class="code-head"><span>PowerShell · optional</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre>ollama pull qwen3.5:9b</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- build from source (developers) -->
+    <section class="section container">
+      <div class="section-head reveal">
+        <span class="overline">For developers</span>
+        <h2>Build from source</h2>
+      </div>
+      <p class="reveal" style="max-width: 65ch; color: var(--text-2); margin-bottom: 22px; font-size: var(--step--1);">Prefer to run the latest code, or hack on Cadence? Skip the installer and run it from the repository. You'll need these on your PATH first:</p>
       <div class="table-wrap reveal">
         <table class="req-table">
           <thead>
@@ -108,8 +172,8 @@ powershell -ExecutionPolicy Bypass -File Cadence\scripts\setup-backends.ps1</pre
     <!-- steps -->
     <section class="section container">
       <div class="section-head reveal">
-        <span class="overline">Install</span>
-        <h2>Four steps</h2>
+        <span class="overline">From source</span>
+        <h2>Run it in four steps</h2>
       </div>
 
       <div class="setup-step reveal">
@@ -174,16 +238,28 @@ npm run tauri dev</pre>
       </div>
       <div class="faq reveal">
         <details>
-          <summary>The badge says "Engine offline"</summary>
-          <div>Make sure the engine terminal from step 2 is still running and shows no errors. Test it directly: open <span style="font-family:var(--font-mono);font-size:0.8em;">http://127.0.0.1:8000/ping</span> in a browser — it should return <span style="font-family:var(--font-mono);font-size:0.8em;">{"status":"ok"}</span>. If another process owns port 8000, stop it or change the port in both places.</div>
+          <summary>Generation fails: &ldquo;the music model isn't installed&rdquo;</summary>
+          <div>The AI models aren't in place yet. Run the one-time <code>setup-backends.ps1</code> from step&nbsp;2 — it installs them into <code>%LOCALAPPDATA%\Cadence\vendor</code>, where Cadence looks. If you linked a source checkout with <code>-LinkFrom</code> and later moved or deleted it, re-run the script to relink.</div>
         </details>
         <details>
-          <summary>npm run tauri dev fails to compile</summary>
-          <div>Confirm Rust is installed with the MSVC toolchain: run <span style="font-family:var(--font-mono);font-size:0.8em;">rustup show</span> and look for <span style="font-family:var(--font-mono);font-size:0.8em;">stable-x86_64-pc-windows-msvc</span>. Visual Studio C++ Build Tools must be present — the rustup installer offers them if missing.</div>
+          <summary>The sidebar dot says &ldquo;Engine offline&rdquo;</summary>
+          <div>The app starts its own engine, so give it 10&ndash;20 seconds after launch. If it stays offline, fully quit Cadence and reopen it. Still stuck? Open <strong>Task Manager → Details</strong> and end any lingering <code>cadence-engine.exe</code>, then relaunch. (Running from source instead? Make sure your <code>uv run uvicorn</code> terminal is up and nothing else owns port&nbsp;8000.)</div>
         </details>
         <details>
-          <summary>How do I check my GPU is visible</summary>
-          <div>Run <span style="font-family:var(--font-mono);font-size:0.8em;">nvidia-smi</span> in a terminal. It should list your GPU and driver version. If the command doesn't exist, install the current NVIDIA driver first. GPU generation arrives with Phase 1.</div>
+          <summary>Windows blocked the installer (SmartScreen)</summary>
+          <div>The installer isn't code-signed yet, so Windows shows a blue &ldquo;Windows protected your PC&rdquo; screen. Click <strong>More info</strong>, then <strong>Run anyway</strong>. Code signing is on the list.</div>
+        </details>
+        <details>
+          <summary>How do I update to a newer version?</summary>
+          <div>Open <strong>Settings → About</strong> and click <strong>Check for updates</strong>. If a newer release exists it shows a <strong>Download</strong> button; install it over the top — your library and trained voices are kept separately and carry over.</div>
+        </details>
+        <details>
+          <summary>How do I check my GPU is visible?</summary>
+          <div>Run <code>nvidia-smi</code> in a terminal. It should list your GPU and driver version. If the command doesn't exist, install the current NVIDIA driver first. Without a CUDA GPU, generation falls back to CPU and takes minutes instead of seconds.</div>
+        </details>
+        <details>
+          <summary>Building from source: <code>npm run tauri dev</code> won't compile</summary>
+          <div>Confirm Rust has the MSVC toolchain: run <code>rustup show</code> and look for <code>stable-x86_64-pc-windows-msvc</code>. Visual Studio C++ Build Tools must be present — the rustup installer offers them if they're missing.</div>
         </details>
       </div>
       <p class="muted reveal" style="margin-top: 24px; font-size: var(--step--1);">Still stuck? Head to <a href="support.html" style="color:var(--accent); font-weight:500;">Support</a>.</p>

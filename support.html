@@ -76,6 +76,26 @@
       </div>
       <div class="faq reveal">
         <details>
+          <summary>How do I install Cadence?</summary>
+          <div>Download the Windows <code>.msi</code> from the <a href="setup.html">setup guide</a> and install it, then run the one-time <code>setup-backends.ps1</code> to fetch the AI models. The <a href="setup.html">Quick start</a> there walks through it step by step.</div>
+        </details>
+        <details>
+          <summary>Why does Windows warn about the installer?</summary>
+          <div>The installer isn't code-signed yet, so SmartScreen shows a blue &ldquo;Windows protected your PC&rdquo; screen. Click <strong>More info</strong>, then <strong>Run anyway</strong>. Code signing is planned.</div>
+        </details>
+        <details>
+          <summary>Generation says a model isn't installed — what do I do?</summary>
+          <div>The installer ships the app and engine, but not the ~10&nbsp;GB models. Run <code>setup-backends.ps1</code> once (see the <a href="setup.html">setup guide</a>); it installs them into <code>%LOCALAPPDATA%\Cadence\vendor</code>, where Cadence looks. Then fully restart the app.</div>
+        </details>
+        <details>
+          <summary>How do I update to a newer version?</summary>
+          <div>Open <strong>Settings → About</strong> in the app and click <strong>Check for updates</strong>. If a newer release is out, it shows a Download button; install it over the top. Your library and trained voices are stored separately and carry over.</div>
+        </details>
+        <details>
+          <summary>Can I write my own lyrics?</summary>
+          <div>Yes. Pick a voice (not Instrumental), open <strong>+&nbsp;Advanced</strong> under the prompt, and paste them into the <strong>Lyrics</strong> box — there's an <em>Insert example</em> template to start from. Shape the song with <code>[Verse]</code>, <code>[Chorus]</code>, and <code>[Bridge]</code> tags; keep lines short and singable, and leave genre and tempo in the prompt. Leave the box empty to let Cadence write them.</div>
+        </details>
+        <details>
           <summary>Does Cadence need an internet connection?</summary>
           <div>Only for the initial downloads — the app, the models, and dependencies. After that, generation and voice training run entirely offline. The exceptions are optional cloud providers (Claude for lyrics, Suno or ElevenLabs for generation), which you have to deliberately enable.</div>
         </details>
@@ -101,11 +121,11 @@
         </details>
         <details>
           <summary>Where are my tracks saved?</summary>
-          <div>As WAV files in a local folder, with an MP3 export option. They appear in the app's Library, but they're ordinary files — you can copy, move, or back them up like anything else on your disk.</div>
+          <div>As WAV files under <code>%LOCALAPPDATA%\Cadence\output</code>, with an MP3 export option. They appear in the app's Library, but they're ordinary files — copy, move, or back them up like anything else on your disk.</div>
         </details>
         <details>
-          <summary>When can I just download an installer?</summary>
-          <div>Phase 7 on the <a href="roadmap.html">roadmap</a> ships a Windows .msi installer. macOS and Linux builds follow in Phase 8, after Windows is solid.</div>
+          <summary>Is there a macOS or Linux version?</summary>
+          <div>Not yet — Windows is the focus while the core settles. Cross-platform builds (Apple Silicon and Linux CUDA) are Phase&nbsp;8 on the <a href="roadmap.html">roadmap</a>.</div>
         </details>
       </div>
     </section>
