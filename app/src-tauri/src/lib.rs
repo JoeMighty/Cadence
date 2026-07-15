@@ -44,6 +44,74 @@ async fn engine_healthy() -> bool {
     .unwrap_or(false)
 }
 
+/// Cadence's default per-user home: Music\Cadence. Music is never given a
+/// virtualized private view by Windows (AppData can be), and it's where a
+/// music app's files belong.
+fn default_data_dir(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+  app.path().audio_dir().ok().map(|music| music.join("Cadence"))
+}
+
+/// The user's storage override lives at the DEFAULT location even when data
+/// is stored elsewhere, so it can always be found again.
+fn config_path(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+  default_data_dir(app).map(|d| d.join("config.json"))
+}
+
+fn read_data_dir_override(app: &tauri::AppHandle) -> Option<String> {
+  let path = config_path(app)?;
+  let text = std::fs::read_to_string(path).ok()?;
+  let cfg: serde_json::Value = serde_json::from_str(&text).ok()?;
+  let dir = cfg.get("data_dir")?.as_str()?.trim();
+  if dir.is_empty() { None } else { Some(dir.to_string()) }
+}
+
+/// Where the engine keeps everything (models, tracks, database) right now.
+#[tauri::command]
+fn get_data_dir(app: tauri::AppHandle) -> serde_json::Value {
+  let default = default_data_dir(&app)
+    .map(|d| d.to_string_lossy().to_string())
+    .unwrap_or_default();
+  let overridden = read_data_dir_override(&app);
+  serde_json::json!({
+    "default": default,
+    "override": overridden,
+    "effective": overridden.clone().unwrap_or(default),
+  })
+}
+
+/// Point Cadence at a different storage folder (empty clears the override).
+/// Takes effect when the engine restarts.
+#[tauri::command]
+fn set_data_dir(app: tauri::AppHandle, path: String) -> Result<(), String> {
+  let cfg_path = config_path(&app).ok_or("no Music folder available")?;
+  let trimmed = path.trim();
+  if !trimmed.is_empty() {
+    let dir = std::path::Path::new(trimmed);
+    if !dir.is_absolute() {
+      return Err("Use a full path, like D:\\CadenceData".into());
+    }
+    std::fs::create_dir_all(dir).map_err(|e| format!("Can't create that folder: {e}"))?;
+    let probe = dir.join(".cadence-write-test");
+    std::fs::write(&probe, "ok").map_err(|e| format!("Can't write there: {e}"))?;
+    let _ = std::fs::remove_file(&probe);
+  }
+  if let Some(parent) = cfg_path.parent() {
+    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+  }
+  let cfg = serde_json::json!({ "data_dir": trimmed });
+  std::fs::write(&cfg_path, serde_json::to_string_pretty(&cfg).unwrap())
+    .map_err(|e| format!("Couldn't save the setting: {e}"))
+}
+
+/// Stop the engine sidecar and start a fresh one (picks up a new data dir).
+#[tauri::command]
+fn restart_engine(app: tauri::AppHandle) {
+  if let Some(child) = app.state::<EngineProcess>().0.lock().unwrap().take() {
+    stop_engine(child);
+  }
+  start_engine(app);
+}
+
 /// Open the GitHub releases page in the default browser so the user can
 /// download a newer installer. Fixed URL — nothing from the webview is run.
 #[tauri::command]
@@ -74,16 +142,18 @@ fn start_engine(app: tauri::AppHandle) {
         return;
       }
     };
-    // The sidecar does NOT inherit our environment, so the engine can't read
-    // %LOCALAPPDATA% on its own — without this it falls back to a folder with no
-    // models and reports the backend missing. Pass the data dir explicitly; it
-    // must match where scripts/setup-backends installs them: %LOCALAPPDATA%\Cadence.
+    // Windows can hand a spawned sidecar a virtualized, private view of AppData:
+    // files the user installed there look missing, and files the engine writes
+    // never reach the real profile. Music is never virtualized — and it's where
+    // a music app's data belongs — so Cadence lives in Music\Cadence unless the
+    // user pointed it elsewhere in Settings. Keep the default in sync with the
+    // engine and scripts/setup-backends.
     let mut command = command.env("CADENCE_PORT", "8000");
-    if let Ok(local) = app.path().local_data_dir() {
-      command = command.env(
-        "CADENCE_DATA_DIR",
-        local.join("Cadence").to_string_lossy().to_string(),
-      );
+    let data_dir = read_data_dir_override(&app)
+      .map(std::path::PathBuf::from)
+      .or_else(|| default_data_dir(&app));
+    if let Some(dir) = data_dir {
+      command = command.env("CADENCE_DATA_DIR", dir.to_string_lossy().to_string());
     }
     match command.spawn() {
       Ok((mut rx, child)) => {
@@ -112,7 +182,13 @@ pub fn run() {
       start_engine(app.handle().clone());
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![ping_engine, open_releases_page])
+    .invoke_handler(tauri::generate_handler![
+      ping_engine,
+      open_releases_page,
+      get_data_dir,
+      set_data_dir,
+      restart_engine
+    ])
     .build(tauri::generate_context!())
     .expect("error while running tauri application")
     .run(|app_handle, event| {

@@ -45,6 +45,10 @@ export interface Health {
   acestep_installed: boolean;
   acestep_running: boolean;
   applio_installed: boolean;
+  data_root: string;
+  output_dir: string;
+  acestep_dir: string;
+  applio_dir: string;
 }
 
 export async function getHealth(): Promise<Health> {
@@ -138,6 +142,8 @@ export interface ComposeOptions {
   instrumental?: boolean;
   duration?: number;
   lyrics?: string;
+  output_dir?: string;
+  save_stems?: boolean;
 }
 
 export async function compose(opts: ComposeOptions): Promise<{ job_id: string }> {
@@ -189,6 +195,7 @@ export interface SystemInfo {
     driver?: string;
   };
   ollama: { reachable: boolean; model: string; model_present: boolean };
+  tools?: { git: boolean; uv: boolean };
 }
 
 export async function getSettings(): Promise<Settings> {

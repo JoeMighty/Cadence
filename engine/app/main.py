@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import shutil
 import subprocess
 import uuid
 from pathlib import Path
@@ -61,12 +62,18 @@ def ping() -> dict[str, str]:
 
 @app.get("/health")
 def health() -> dict:
+    # The paths let the UI show exactly where the engine is looking, so a
+    # misplaced install is diagnosable from Settings instead of guesswork.
     return {
         "status": "ok",
         "mock": settings.MOCK,
         "acestep_installed": settings.acestep_python().exists(),
         "acestep_running": False if settings.MOCK else acestep_service.is_healthy(),
         "applio_installed": settings.applio_python().exists(),
+        "data_root": str(settings.DATA_ROOT),
+        "output_dir": str(settings.OUTPUT_DIR),
+        "acestep_dir": str(settings.ACESTEP_DIR),
+        "applio_dir": str(settings.APPLIO_DIR),
     }
 
 
@@ -271,6 +278,10 @@ class ComposeRequest(BaseModel):
     duration: Optional[float] = Field(default=None, ge=10, le=600)
     thinking: bool = True
     lyrics: str = ""
+    # Where the finished files land; empty means the engine's own output folder.
+    output_dir: str = ""
+    # Also save the separated stems (vocals + instrumental) next to the track.
+    save_stems: bool = False
 
 
 @app.post("/compose")
@@ -284,6 +295,22 @@ async def compose(req: ComposeRequest) -> dict:
             profile["status"] != "ready" or not profile["model_path"] or not profile["index_path"]
         ):
             raise HTTPException(409, f"Voice '{profile['name']}' is not trained yet")
+
+    # Fail fast on impossible asks, before any GPU time is spent.
+    out_dir = Path(req.output_dir) if req.output_dir.strip() else settings.OUTPUT_DIR
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        probe = out_dir / ".cadence-write-test"
+        probe.write_text("ok")
+        probe.unlink()
+    except OSError as exc:
+        raise HTTPException(400, f"Can't save to '{out_dir}': {exc}") from exc
+    if req.save_stems and not settings.MOCK and not stems.available():
+        raise HTTPException(
+            409,
+            "Saving separate stems needs the voice backend (Applio with Demucs). "
+            + settings.setup_hint(),
+        )
 
     async def runner(job: Job) -> None:
         user_lyrics = "" if req.instrumental else req.lyrics.strip()
@@ -326,8 +353,11 @@ async def compose(req: ComposeRequest) -> dict:
 
         final_path = music_path
         voice_name = None
+        # Stems produced along the way, reused if the user asked to keep them.
+        stem_vocal: Optional[Path] = None
+        stem_instrumental: Optional[Path] = None
         if not req.instrumental and profile is not None:
-            final = settings.OUTPUT_DIR / f"track-{job.id}.wav"
+            final = out_dir / f"track-{job.id}.wav"
             if settings.MOCK:
                 job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
                 mock_audio.write_mock_conversion(Path(music_path), final)
@@ -351,6 +381,8 @@ async def compose(req: ComposeRequest) -> dict:
                 job.update(status=JobStatus.CONVERTING, detail="Remixing")
                 await stems.remix(converted, instrumental, final)
                 final_path = str(final)
+                stem_vocal = converted
+                stem_instrumental = instrumental
             else:
                 # Fallback: convert the full mix (lower quality, but always works).
                 job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
@@ -364,6 +396,26 @@ async def compose(req: ComposeRequest) -> dict:
                 )
                 final_path = conv["audio_path"]
             voice_name = profile["name"]
+
+        # Deliver into the chosen folder, and keep the stems if asked.
+        if req.output_dir.strip() and Path(final_path).parent != out_dir:
+            delivered = out_dir / f"track-{job.id}.wav"
+            shutil.copyfile(final_path, delivered)
+            final_path = str(delivered)
+        if req.save_stems:
+            job.update(detail="Separating stems")
+            v_out = out_dir / f"track-{job.id}.vocals.wav"
+            i_out = out_dir / f"track-{job.id}.instrumental.wav"
+            if settings.MOCK:
+                mock_audio.write_mock_track(v_out, seconds=req.duration or 15)
+                mock_audio.write_mock_track(i_out, seconds=req.duration or 15)
+            else:
+                if stem_vocal is None or stem_instrumental is None:
+                    stem_vocal, stem_instrumental = await stems.separate(
+                        Path(music_path), settings.OUTPUT_DIR / f"stems-{job.id}"
+                    )
+                shutil.copyfile(stem_vocal, v_out)
+                shutil.copyfile(stem_instrumental, i_out)
 
         track = db.create_track(
             prompt=req.prompt,
@@ -495,7 +547,15 @@ def delete_secret(name: str) -> dict:
 
 @app.get("/system")
 def system() -> dict:
-    return {"gpu": system_info.gpu_status(), "ollama": system_info.ollama_status()}
+    # tools: what the one-time backend setup script needs from the user's PATH.
+    return {
+        "gpu": system_info.gpu_status(),
+        "ollama": system_info.ollama_status(),
+        "tools": {
+            "git": shutil.which("git") is not None,
+            "uv": shutil.which("uv") is not None,
+        },
+    }
 
 
 @app.on_event("shutdown")

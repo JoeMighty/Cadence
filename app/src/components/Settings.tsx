@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   deleteSecret,
+  getHealth,
   getSettings,
   getSystem,
   putSecret,
   updateSettings,
+  type Health,
   type SecretName,
   type Settings as SettingsData,
   type SystemInfo,
@@ -31,6 +33,12 @@ type UpdateState =
   | { kind: "available"; tag: string }
   | { kind: "error"; message: string };
 
+interface StorageInfo {
+  default: string;
+  override: string | null;
+  effective: string;
+}
+
 // True when `latest` ("v0.1.2" / "0.1.2") is a higher version than `current`.
 function isNewer(latest: string, current: string): boolean {
   const a = latest.replace(/^v/, "").split(".").map(Number);
@@ -49,6 +57,11 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string | null>(null);
   const [update, setUpdate] = useState<UpdateState>({ kind: "idle" });
+  const [storage, setStorage] = useState<StorageInfo | null>(null);
+  const [dataDirInput, setDataDirInput] = useState("");
+  const [health, setHealth] = useState<Health | null>(null);
+  const [storageMsg, setStorageMsg] = useState<string | null>(null);
+  const [storageBusy, setStorageBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +81,39 @@ export default function Settings() {
   useEffect(() => {
     getVersion().then(setVersion).catch(() => {});
   }, []);
+
+  const loadStorage = useCallback(() => {
+    invoke<StorageInfo>("get_data_dir")
+      .then((s) => {
+        setStorage(s);
+        setDataDirInput(s.override ?? "");
+      })
+      .catch(() => {});
+    getHealth().then(setHealth).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadStorage();
+  }, [loadStorage]);
+
+  async function applyDataDir(path: string) {
+    setStorageBusy(true);
+    setStorageMsg(null);
+    try {
+      await invoke("set_data_dir", { path });
+      await invoke("restart_engine");
+      setStorageMsg("Engine restarting with the new folder…");
+      setTimeout(() => {
+        loadStorage();
+        load();
+        setStorageMsg(null);
+        setStorageBusy(false);
+      }, 5000);
+    } catch (e) {
+      setStorageMsg(typeof e === "string" ? e : e instanceof Error ? e.message : "Couldn't apply");
+      setStorageBusy(false);
+    }
+  }
 
   async function checkUpdates() {
     setUpdate({ kind: "checking" });
@@ -185,6 +231,56 @@ export default function Settings() {
 
         </>
       )}
+
+      {/* storage — always available, even when the engine is offline */}
+      <Section title="Storage" subtitle="Where Cadence keeps models, tracks, and voice data">
+        <div className="rounded-xl border border-border bg-surface p-5 text-sm">
+          <div className="grid gap-2 font-mono text-sm">
+            <Row
+              label="Data folder"
+              value={(storage?.effective || "—") + (storage?.override ? "  (custom)" : "")}
+            />
+            <Row label="Engine is using" value={health?.data_root ?? "engine offline"} />
+          </div>
+          {storage && health && health.data_root !== storage.effective && (
+            <p className="mt-2 text-xs text-error">
+              The engine hasn&apos;t picked up the new folder yet — apply below restarts it.
+            </p>
+          )}
+
+          <div className="mt-4 flex items-center gap-2">
+            <input
+              type="text"
+              value={dataDirInput}
+              onChange={(e) => setDataDirInput(e.target.value)}
+              placeholder={storage ? `Default: ${storage.default}` : "D:\\CadenceData"}
+              className="h-9 flex-1 rounded-lg border border-border bg-background px-3 font-mono text-sm outline-none focus:border-accent"
+            />
+            <button
+              onClick={() => applyDataDir(dataDirInput)}
+              disabled={storageBusy || !dataDirInput.trim()}
+              className="h-9 rounded-lg bg-accent px-4 text-sm font-medium text-white disabled:opacity-40"
+            >
+              Use this folder
+            </button>
+            {storage?.override && (
+              <button
+                onClick={() => applyDataDir("")}
+                disabled={storageBusy}
+                className="h-9 rounded-lg border border-border px-3 text-sm text-foreground-secondary hover:border-accent hover:text-accent disabled:opacity-40"
+              >
+                Reset to default
+              </button>
+            )}
+          </div>
+          {storageMsg && <p className="mt-2 text-xs text-foreground-secondary">{storageMsg}</p>}
+          <p className="mt-3 text-xs leading-relaxed text-foreground-secondary">
+            Applying restarts the engine. Existing models and tracks are not moved — if you
+            switch folders, run the setup script again for the new location or move the{" "}
+            <span className="font-mono">vendor</span> folder yourself.
+          </p>
+        </div>
+      </Section>
 
       {/* about — always available, even when the engine is offline */}
       <Section title="About" subtitle="">

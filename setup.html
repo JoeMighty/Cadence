@@ -53,10 +53,10 @@
       <h1>Install Cadence</h1>
       <p class="lede">Download the Windows installer, or run from source. Either way, full music generation needs the local backends set up — the installer ships the app and engine, not the multi-gigabyte models.</p>
       <div class="hero-actions" style="margin-top: 26px;">
-        <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.4/Cadence_0.1.4_x64_en-US.msi">Download for Windows (.msi)</a>
-        <a class="btn btn-ghost" href="https://github.com/JoeMighty/Cadence/releases/tag/v0.1.4" target="_blank" rel="noopener">Release notes</a>
+        <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.5/Cadence_0.1.5_x64_en-US.msi">Download for Windows (.msi)</a>
+        <a class="btn btn-ghost" href="https://github.com/JoeMighty/Cadence/releases/tag/v0.1.5" target="_blank" rel="noopener">Release notes</a>
       </div>
-      <p class="muted" style="margin-top: 12px; font-size: var(--step--1);">Pre-release · v0.1.4 · 23&nbsp;MB · unsigned, so SmartScreen warns (More info → Run anyway). The app starts and stops its own engine.</p>
+      <p class="muted" style="margin-top: 12px; font-size: var(--step--1);">Pre-release · v0.1.5 · 23&nbsp;MB · unsigned, so SmartScreen warns (More info → Run anyway). The app starts and stops its own engine.</p>
     </section>
 
     <section class="container" style="padding-bottom: 0;">
@@ -96,7 +96,7 @@
           <h3>Download and install</h3>
           <p>Grab the installer and run it. Because it isn't code-signed yet, Windows SmartScreen shows a blue warning — click <strong>More info</strong>, then <strong>Run anyway</strong>. It installs to <code>C:\Program&nbsp;Files\Cadence</code>.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.4/Cadence_0.1.4_x64_en-US.msi">Download for Windows (.msi)</a>
+            <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.5/Cadence_0.1.5_x64_en-US.msi">Download for Windows (.msi)</a>
           </div>
         </div>
       </div>
@@ -105,13 +105,13 @@
         <span class="setup-num">2</span>
         <div>
           <h3>Set up the AI models (one time)</h3>
-          <p>The installer ships the app and its engine, but not the ~10&nbsp;GB music and voice models. This script installs them into <code>%LOCALAPPDATA%\Cadence\vendor</code>, where Cadence looks. You need <code>git</code> and <code>uv</code> on your PATH. Open PowerShell and run:</p>
+          <p>The installer ships the app and its engine, but not the ~10&nbsp;GB music and voice models. This script installs them into <code>Music\Cadence\vendor</code>, where Cadence looks. (The app can also show you this checklist itself — click <em>See what's missing</em> on the Generate screen.) You need <code>git</code> and <code>uv</code> on your PATH. Open PowerShell and run:</p>
           <div class="code">
             <div class="code-head"><span>PowerShell</span><button class="copy-btn" type="button">Copy</button></div>
             <pre>git clone https://github.com/JoeMighty/Cadence.git
 powershell -ExecutionPolicy Bypass -File Cadence\scripts\setup-backends.ps1</pre>
           </div>
-          <p class="muted" style="margin-top: 14px; font-size: var(--step--1);">Already built the backends in a source checkout? Link to them instantly instead of rebuilding: <code>setup-backends.ps1 -LinkFrom .\engine\vendor</code>.</p>
+          <p class="muted" style="margin-top: 14px; font-size: var(--step--1);">Already built the backends in a source checkout? Move them across instantly instead of rebuilding: <code>setup-backends.ps1 -MoveFrom .\engine\vendor</code> — the checkout keeps working via junctions it leaves behind.</p>
         </div>
       </div>
 
@@ -239,7 +239,7 @@ npm run tauri dev</pre>
       <div class="faq reveal">
         <details>
           <summary>Generation fails: &ldquo;the music model isn't installed&rdquo;</summary>
-          <div>The AI models aren't in place yet. Run the one-time <code>setup-backends.ps1</code> from step&nbsp;2 — it installs them into <code>%LOCALAPPDATA%\Cadence\vendor</code>, where Cadence looks. If you linked a source checkout with <code>-LinkFrom</code> and later moved or deleted it, re-run the script to relink.</div>
+          <div>The AI models aren't in place yet. Click <em>See what's missing</em> on the Generate screen for a live checklist, or run the one-time <code>setup-backends.ps1</code> from step&nbsp;2 — it installs the models into <code>Music\Cadence\vendor</code>, where Cadence looks. Settings → Storage shows the exact folder the engine is using, and lets you point it somewhere else.</div>
         </details>
         <details>
           <summary>The sidebar dot says &ldquo;Engine offline&rdquo;</summary>

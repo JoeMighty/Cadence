@@ -11,6 +11,7 @@ import {
   type Track,
   type VoiceProfile,
 } from "@/lib/engine";
+import SetupGuide from "@/components/SetupGuide";
 
 const STEPS_VOICE = ["Writing lyrics", "Generating music", "Converting to your voice"];
 const STEPS_INSTRUMENTAL = ["Writing lyrics", "Generating music"];
@@ -55,7 +56,10 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   const [advanced, setAdvanced] = useState(false);
   const [duration, setDuration] = useState(30);
   const [lyrics, setLyrics] = useState("");
+  const [outputDir, setOutputDir] = useState("");
+  const [saveStems, setSaveStems] = useState(false);
   const [backendReady, setBackendReady] = useState(true);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +84,20 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Output preferences stick across sessions (kept on this machine only).
+  useEffect(() => {
+    try {
+      setOutputDir(localStorage.getItem("cadence-output-dir") ?? "");
+      setSaveStems(localStorage.getItem("cadence-save-stems") === "1");
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("cadence-output-dir", outputDir);
+      localStorage.setItem("cadence-save-stems", saveStems ? "1" : "0");
+    } catch {}
+  }, [outputDir, saveStems]);
 
   // Keep the setup banner honest: poll /health rather than checking once. A
   // freshly started engine can miss the model folder on a cold filesystem read,
@@ -144,6 +162,8 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
         voice_profile_id: instrumental ? undefined : voiceId,
         duration,
         lyrics: !instrumental && lyrics.trim() ? lyrics.trim() : undefined,
+        output_dir: outputDir.trim() || undefined,
+        save_stems: saveStems || undefined,
       });
       setJobId(res.job_id);
     } catch (e) {
@@ -165,24 +185,22 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
       </header>
 
       {!backendReady && (
-        <div className="mb-6 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
-          <p className="font-medium">One more step before you can generate</p>
-          <p className="mt-1 leading-relaxed text-foreground-secondary">
-            The AI models aren&apos;t installed yet. Run the one-time{" "}
-            <code className="font-mono text-xs">setup-backends</code> script, then reopen Cadence.
-            The{" "}
-            <a
-              href="https://joemighty.github.io/Cadence/setup.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-accent hover:underline"
-            >
-              setup guide
-            </a>{" "}
-            has the exact steps.
-          </p>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+          <div>
+            <p className="font-medium">One more step before you can generate</p>
+            <p className="mt-1 leading-relaxed text-foreground-secondary">
+              The AI models aren&apos;t installed yet — a one-time setup puts them in place.
+            </p>
+          </div>
+          <button
+            onClick={() => setGuideOpen(true)}
+            className="h-9 shrink-0 rounded-lg bg-accent px-4 text-sm font-medium text-white"
+          >
+            See what&apos;s missing
+          </button>
         </div>
       )}
+      <SetupGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
 
       {error && (
         <div className="mb-6 rounded-xl border border-error/30 bg-error/5 px-4 py-3 text-sm text-error">
@@ -260,6 +278,36 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="text-sm text-foreground-secondary">Save to (optional)</label>
+              <input
+                type="text"
+                value={outputDir}
+                onChange={(e) => setOutputDir(e.target.value)}
+                disabled={running}
+                placeholder="Leave empty for the Cadence library folder, or paste one like D:\Music\Drafts"
+                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-accent"
+              />
+            </div>
+
+            <label className="flex items-start gap-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={saveStems}
+                onChange={(e) => setSaveStems(e.target.checked)}
+                disabled={running}
+                className="mt-0.5 h-4 w-4 accent-accent"
+              />
+              <span>
+                Save stems separately
+                <span className="block text-xs leading-relaxed text-foreground-secondary">
+                  Also writes <span className="font-mono">.vocals.wav</span> and{" "}
+                  <span className="font-mono">.instrumental.wav</span> next to the track. Needs
+                  the voice backend; on instrumental tracks the vocal stem is near-silent.
+                </span>
+              </span>
+            </label>
 
             {!instrumental && (
               <div>

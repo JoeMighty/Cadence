@@ -2,11 +2,14 @@
     setup-backends.ps1 - one-time install of Cadence's AI backends.
 
     The installed Cadence app ships without the ~10 GB music/voice models (they
-    can't fit in an .msi). This script clones and builds them into a stable
-    per-user folder the app already knows to look in:
+    can't fit in an .msi). This script clones and builds them into the stable
+    per-user folder the app looks in:
 
-        %LOCALAPPDATA%\Cadence\vendor\ACE-Step-1.5   (music generation)
-        %LOCALAPPDATA%\Cadence\vendor\Applio          (voice conversion + Demucs)
+        %USERPROFILE%\Music\Cadence\vendor\ACE-Step-1.5   (music generation)
+        %USERPROFILE%\Music\Cadence\vendor\Applio          (voice conversion + Demucs)
+
+    (Music, not AppData: Windows can give the app a virtualized private view of
+    AppData, where installed files look missing. Music is never virtualized.)
 
     Run it once from a normal PowerShell window:
 
@@ -14,12 +17,13 @@
 
     Re-running is safe: it checks out the pinned commit and reuses existing
     environments. Pass -VendorDir to install somewhere else (then set
-    CADENCE_VENDOR_DIR / the per-backend env vars so the engine follows).
+    CADENCE_DATA_DIR / the per-backend env vars so the engine follows).
 
     Already have the backends built in a repo checkout (engine/vendor)? Skip the
-    multi-GB rebuild and junction the stable folder to it instead:
+    multi-GB rebuild: -MoveFrom MOVES them into the stable folder (instant on the
+    same drive) and leaves junctions behind so the checkout keeps working:
 
-        powershell -ExecutionPolicy Bypass -File scripts\setup-backends.ps1 -LinkFrom .\engine\vendor
+        powershell -ExecutionPolicy Bypass -File scripts\setup-backends.ps1 -MoveFrom .\engine\vendor
 
     Requirements: git and uv on PATH, and an NVIDIA GPU with a recent driver.
     The first music generation (not this script) downloads the model weights.
@@ -27,8 +31,8 @@
 
 [CmdletBinding()]
 param(
-    [string]$VendorDir = (Join-Path $env:LOCALAPPDATA "Cadence\vendor"),
-    [string]$LinkFrom
+    [string]$VendorDir = (Join-Path ([Environment]::GetFolderPath("MyMusic")) "Cadence\vendor"),
+    [string]$MoveFrom
 )
 
 $ErrorActionPreference = "Stop"
@@ -80,23 +84,32 @@ function Fetch-Repo($repo, $commit, $dest) {
 
 Info "Cadence backends -> $VendorDir"
 
-# Fast path: point the stable folder at an already-built checkout via junctions.
-if ($LinkFrom) {
-    $src = (Resolve-Path $LinkFrom).Path
+# Fast path: MOVE already-built backends out of a checkout into the stable
+# folder (instant on the same drive), leaving junctions behind so the checkout
+# keeps working. Real directories, not links — the app must never depend on
+# reparse points it may not be allowed to follow.
+if ($MoveFrom) {
+    $src = (Resolve-Path $MoveFrom).Path
     New-Item -ItemType Directory -Force -Path $VendorDir | Out-Null
     foreach ($name in @("ACE-Step-1.5", "Applio")) {
         $target = Join-Path $src $name
+        $dest = Join-Path $VendorDir $name
+        $item = Get-Item $target -ErrorAction SilentlyContinue
+        if ($item -and $item.LinkType) {
+            throw "$target is already a link ($($item.LinkType)) - nothing to move. Its target may already be in place."
+        }
         $venv = Join-Path $target ".venv\Scripts\python.exe"
         if (-not (Test-Path $venv)) {
-            throw "No built backend at $target (expected $venv). Build it there first, or drop -LinkFrom to install fresh."
+            throw "No built backend at $target (expected $venv). Build it there first, or drop -MoveFrom to install fresh."
         }
-        $link = Join-Path $VendorDir $name
-        if (Test-Path $link) { Remove-Item $link -Force -Recurse }
-        New-Item -ItemType Junction -Path $link -Target $target | Out-Null
-        Ok "$name -> $target"
+        if (Test-Path $dest) { Remove-Item $dest -Force -Recurse }
+        Info "Moving $name -> $dest"
+        Move-Item -Path $target -Destination $dest
+        New-Item -ItemType Junction -Path $target -Target $dest | Out-Null
+        Ok "$name moved; checkout junctioned back"
     }
     Write-Host ""
-    Info "Done. Cadence will use the backends in $src via $VendorDir"
+    Info "Done. The backends live in $VendorDir; the checkout still sees them."
     return
 }
 

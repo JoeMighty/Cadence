@@ -11,11 +11,32 @@ ENGINE_ROOT = Path(__file__).resolve().parent.parent
 # When bundled by PyInstaller, ENGINE_ROOT points into a temp extraction dir,
 # so writable data (db, audio, recordings) goes to a per-user location instead.
 FROZEN = getattr(sys, "frozen", False)
+
+
+def _frozen_data_root() -> Path:
+    """Pick the data folder for the installed app.
+
+    Windows can give a spawned sidecar a virtualized, private view of AppData —
+    files written there never appear in the real profile, and folders installed
+    there by the user look empty. So the installed app lives under Music\\Cadence
+    (never virtualized, and where a music app's output belongs). Probe existing
+    locations first so earlier installs keep working.
+    """
+    env = os.getenv("CADENCE_DATA_DIR")
+    if env:
+        return Path(env)
+    candidates = [Path.home() / "Music" / "Cadence"]
+    local = os.getenv("LOCALAPPDATA")
+    if local:
+        candidates.append(Path(local) / "Cadence")
+    for c in candidates:
+        if (c / "cadence.db").exists() or (c / "vendor").exists():
+            return c
+    return candidates[0]
+
+
 if FROZEN:
-    DATA_ROOT = Path(
-        os.getenv("CADENCE_DATA_DIR")
-        or Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "Cadence"
-    )
+    DATA_ROOT = _frozen_data_root()
     # The heavy AI backends can't ship in the installer; they live in a stable
     # per-user folder that scripts/setup-backends installs into.
     VENDOR_ROOT = DATA_ROOT / "vendor"
