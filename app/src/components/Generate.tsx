@@ -75,17 +75,40 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
     } catch {
       /* engine offline; the shell surfaces this */
     }
-    try {
-      const health = await getHealth();
-      setBackendReady(health.mock || health.acestep_installed);
-    } catch {
-      /* engine offline; the shell surfaces this */
-    }
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Keep the setup banner honest: poll /health rather than checking once. A
+  // freshly started engine can miss the model folder on a cold filesystem read,
+  // so only surface the banner after two straight misses, and clear it the
+  // moment the backend reports in.
+  const missesRef = useRef(0);
+  useEffect(() => {
+    let alive = true;
+    const check = async () => {
+      try {
+        const health = await getHealth();
+        if (!alive) return;
+        if (health.mock || health.acestep_installed) {
+          missesRef.current = 0;
+          setBackendReady(true);
+        } else if (++missesRef.current >= 2) {
+          setBackendReady(false);
+        }
+      } catch {
+        /* engine offline; the shell surfaces that separately */
+      }
+    };
+    check();
+    const id = setInterval(check, 4000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
 
   // Poll the compose job while it runs.
   useEffect(() => {
@@ -143,17 +166,21 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
 
       {!backendReady && (
         <div className="mb-6 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
-          The music backend isn&apos;t installed yet, so generation won&apos;t run. Set it up once
-          with <code className="font-mono text-xs">scripts/setup-backends</code> — see the{" "}
-          <a
-            href="https://joemighty.github.io/Cadence/setup.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-accent hover:underline"
-          >
-            setup guide
-          </a>
-          .
+          <p className="font-medium">One more step before you can generate</p>
+          <p className="mt-1 leading-relaxed text-foreground-secondary">
+            The AI models aren&apos;t installed yet. Run the one-time{" "}
+            <code className="font-mono text-xs">setup-backends</code> script, then reopen Cadence.
+            The{" "}
+            <a
+              href="https://joemighty.github.io/Cadence/setup.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent hover:underline"
+            >
+              setup guide
+            </a>{" "}
+            has the exact steps.
+          </p>
         </div>
       )}
 
