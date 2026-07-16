@@ -1,6 +1,6 @@
 [package]
 name = "cadence"
-version = "0.1.5"
+version = "0.1.6"
 description = "Cadence — local-first AI music generation in your own voice"
 authors = ["Jobin Bennykutty"]
 license = ""

@@ -17,12 +17,19 @@ const STEPS_VOICE = ["Writing lyrics", "Generating music", "Converting to your v
 const STEPS_INSTRUMENTAL = ["Writing lyrics", "Generating music"];
 
 // Shown when the user opens "Insert example". Section tags drive the song
-// structure; the model reads these, not chord names.
-const EXAMPLE_LYRICS = `[Verse]
+// structure; the model reads these, not chord names. This one shows the full
+// shape — with Length on Auto, more sections mean a longer song.
+const EXAMPLE_LYRICS = `[Intro]
+
+[Verse]
 City lights are bleeding through the rain
 Every window holds another name
 Footsteps echo down an empty street
 Chasing something I can't quite complete
+
+[Pre-Chorus]
+And I keep on running, running
+Like the night could set me free
 
 [Chorus]
 Hold the line, we're running out of time
@@ -33,6 +40,18 @@ A quiet song before the night grows cold
 [Verse]
 Coffee going cold on the windowsill
 Morning feels a thousand miles uphill
+Every promise that we never kept
+Sings me back to sleep inside my head
+
+[Pre-Chorus]
+And I keep on running, running
+Like the night could set me free
+
+[Chorus]
+Hold the line, we're running out of time
+Neon signs are painting us in gold
+Hold the line, the city's yours and mine
+A quiet song before the night grows cold
 
 [Bridge]
 When the sun comes up we'll be alright
@@ -40,7 +59,11 @@ Trading all these shadows for the light
 
 [Chorus]
 Hold the line, we're running out of time
-Neon signs are painting us in gold`;
+Neon signs are painting us in gold
+Hold the line, the city's yours and mine
+A quiet song before the night grows cold
+
+[Outro]`;
 
 function stepIndex(detail: string): number {
   if (detail.startsWith("Writing")) return 0;
@@ -54,7 +77,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   const [prompt, setPrompt] = useState("");
   const [voiceId, setVoiceId] = useState<string>("instrumental");
   const [advanced, setAdvanced] = useState(false);
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState<number | "auto">(30);
   const [lyrics, setLyrics] = useState("");
   const [outputDir, setOutputDir] = useState("");
   const [saveStems, setSaveStems] = useState(false);
@@ -160,7 +183,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
         prompt: prompt.trim(),
         instrumental,
         voice_profile_id: instrumental ? undefined : voiceId,
-        duration,
+        duration: duration === "auto" ? undefined : duration,
         lyrics: !instrumental && lyrics.trim() ? lyrics.trim() : undefined,
         output_dir: outputDir.trim() || undefined,
         save_stems: saveStems || undefined,
@@ -255,28 +278,49 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
 
       {/* advanced */}
       <div className="mt-4">
-        <button
-          onClick={() => setAdvanced((a) => !a)}
-          className="font-mono text-xs uppercase tracking-widest text-foreground-secondary hover:text-foreground"
-        >
-          {advanced ? "− Advanced" : "+ Advanced"}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setAdvanced((a) => !a)}
+            className="font-mono text-xs uppercase tracking-widest text-foreground-secondary hover:text-foreground"
+          >
+            {advanced ? "− Advanced" : "+ Advanced"}
+          </button>
+          {!advanced && !instrumental && (
+            <button
+              onClick={() => setAdvanced(true)}
+              className="font-mono text-xs text-accent hover:underline"
+            >
+              ♪ Paste your own lyrics
+            </button>
+          )}
+        </div>
         {advanced && (
           <div className="mt-3 flex flex-col gap-4 rounded-xl border border-border bg-surface px-4 py-4">
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-foreground-secondary">Length</label>
-              <select
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                disabled={running}
-                className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
-              >
-                {[15, 30, 60, 90, 120].map((s) => (
-                  <option key={s} value={s}>
-                    {s}s
-                  </option>
-                ))}
-              </select>
+            <div>
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-foreground-secondary">Length</label>
+                <select
+                  value={duration}
+                  onChange={(e) =>
+                    setDuration(e.target.value === "auto" ? "auto" : Number(e.target.value))
+                  }
+                  disabled={running}
+                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
+                >
+                  <option value="auto">Auto · match the lyrics</option>
+                  {[15, 30, 60, 90, 120, 180, 240, 300].map((s) => (
+                    <option key={s} value={s}>
+                      {s < 60 ? `${s}s` : `${Math.floor(s / 60)}m${s % 60 ? ` ${s % 60}s` : ""}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {duration === "auto" && (
+                <p className="mt-1.5 text-xs leading-relaxed text-foreground-secondary">
+                  The model sizes the song to the lyrics — a four-minute lyric gets a
+                  four-minute track. More sections, longer song.
+                </p>
+              )}
             </div>
 
             <div>

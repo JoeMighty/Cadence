@@ -8,6 +8,7 @@ export type ProfileStatus = "collecting" | "training" | "ready" | "error";
 export interface VoiceProfile {
   id: string;
   name: string;
+  gender: "" | "male" | "female";
   status: ProfileStatus;
   created_at: number;
   trained_at: number | null;
@@ -63,12 +64,15 @@ export async function getProfile(id: string): Promise<VoiceProfile> {
   return json(await fetch(`${BASE}/voice/profiles/${id}`));
 }
 
-export async function createProfile(name: string): Promise<VoiceProfile> {
+export async function createProfile(
+  name: string,
+  gender: "" | "male" | "female" = "",
+): Promise<VoiceProfile> {
   return json(
     await fetch(`${BASE}/voice/profiles`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, gender }),
     }),
   );
 }

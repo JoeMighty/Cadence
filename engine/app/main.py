@@ -18,7 +18,7 @@ import shutil
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -180,6 +180,9 @@ def audio(job_id: str) -> FileResponse:
 class CreateProfileRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     sample_rate: int = 40000
+    # Steers the generated vocal's register before conversion, so the RVC step
+    # starts from a voice in the right range. "male", "female", or "".
+    gender: Literal["", "male", "female"] = ""
 
 
 class TrainRequest(BaseModel):
@@ -197,7 +200,7 @@ def _with_unlock(profile: dict) -> dict:
 
 @app.post("/voice/profiles")
 def create_voice_profile(req: CreateProfileRequest) -> dict:
-    return _with_unlock(db.create_profile(req.name, req.sample_rate))
+    return _with_unlock(db.create_profile(req.name, req.sample_rate, req.gender))
 
 
 @app.get("/voice/profiles")
@@ -329,6 +332,11 @@ async def compose(req: ComposeRequest) -> dict:
                 raise
             structured = {"caption": req.prompt, "lyrics": "", "vocal_language": "en", "bpm": None}
         caption = structured["caption"] or req.prompt
+        # Generate the base vocal in the target voice's register — converting a
+        # male vocal onto a female voice model (or vice versa) sounds strained.
+        gender = (profile or {}).get("gender", "")
+        if gender and not req.instrumental and f"{gender} vocal" not in caption.lower():
+            caption = f"{caption}, {gender} vocals"
         lyrics = user_lyrics or structured["lyrics"]
 
         job.update(status=JobStatus.GENERATING, detail="Generating music")

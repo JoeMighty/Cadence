@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS voice_profiles (
     sample_rate INTEGER NOT NULL DEFAULT 40000,
     epochs      INTEGER,
     detail      TEXT,
-    error       TEXT
+    error       TEXT,
+    gender      TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS voice_takes (
@@ -71,18 +72,23 @@ def _connect() -> sqlite3.Connection:
 def init_db() -> None:
     with _connect() as conn:
         conn.executescript(_SCHEMA)
+        # Databases created before the gender column existed get it added here.
+        try:
+            conn.execute("ALTER TABLE voice_profiles ADD COLUMN gender TEXT NOT NULL DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
 
 
 # ---------- profiles ----------
 
-def create_profile(name: str, sample_rate: int = 40000) -> dict[str, Any]:
+def create_profile(name: str, sample_rate: int = 40000, gender: str = "") -> dict[str, Any]:
     pid = uuid.uuid4().hex[:12]
     now = time.time()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO voice_profiles (id, name, status, created_at, sample_rate) "
-            "VALUES (?, ?, 'collecting', ?, ?)",
-            (pid, name, now, sample_rate),
+            "INSERT INTO voice_profiles (id, name, status, created_at, sample_rate, gender) "
+            "VALUES (?, ?, 'collecting', ?, ?, ?)",
+            (pid, name, now, sample_rate, gender),
         )
     return get_profile(pid)  # type: ignore[return-value]
 

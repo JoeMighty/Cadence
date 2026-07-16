@@ -25,6 +25,7 @@ export default function VoiceSetup() {
   const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+  const [newGender, setNewGender] = useState<"" | "male" | "female">("");
   const [scriptIndex, setScriptIndex] = useState(0);
   const [recording, setRecording] = useState(false);
   const [level, setLevel] = useState(0);
@@ -76,10 +77,11 @@ export default function VoiceSetup() {
     setBusy(true);
     setError(null);
     try {
-      const p = await createProfile(name);
+      const p = await createProfile(name, newGender);
       setProfiles((prev) => [p, ...prev]);
       setActiveId(p.id);
       setNewName("");
+      setNewGender("");
       setScriptIndex(0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create voice");
@@ -197,6 +199,8 @@ export default function VoiceSetup() {
         <NewVoiceInput
           value={newName}
           onChange={setNewName}
+          gender={newGender}
+          onGender={setNewGender}
           onCreate={handleCreate}
           busy={busy}
         />
@@ -411,11 +415,15 @@ function EmptyState() {
 function NewVoiceInput({
   value,
   onChange,
+  gender,
+  onGender,
   onCreate,
   busy,
 }: {
   value: string;
   onChange: (v: string) => void;
+  gender: "" | "male" | "female";
+  onGender: (g: "" | "male" | "female") => void;
   onCreate: () => void;
   busy: boolean;
 }) {
@@ -428,6 +436,16 @@ function NewVoiceInput({
         placeholder="New voice…"
         className="h-9 w-32 rounded-full border border-border bg-background px-3.5 text-sm outline-none focus:border-accent"
       />
+      <select
+        value={gender}
+        onChange={(e) => onGender(e.target.value as "" | "male" | "female")}
+        title="Songs sung with this voice generate the vocal in this range first, which makes the conversion cleaner."
+        className="h-9 rounded-full border border-border bg-background px-2.5 text-sm text-foreground-secondary outline-none focus:border-accent"
+      >
+        <option value="">Range: auto</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+      </select>
       <button
         onClick={onCreate}
         disabled={busy || !value.trim()}
