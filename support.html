@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Support — Cadence</title>
-  <meta name="description" content="Get help with Cadence — frequently asked questions and where to report problems.">
+  <title>Support - Cadence</title>
+  <meta name="description" content="Get help with Cadence - frequently asked questions and where to report problems.">
   <link rel="canonical" href="https://joemighty.github.io/Cadence/support.html">
   <meta property="og:site_name" content="Cadence">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Support — Cadence">
-  <meta property="og:description" content="Get help with Cadence — frequently asked questions and where to report problems.">
+  <meta property="og:title" content="Support - Cadence">
+  <meta property="og:description" content="Get help with Cadence - frequently asked questions and where to report problems.">
   <meta property="og:url" content="https://joemighty.github.io/Cadence/support.html">
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
@@ -51,7 +51,7 @@
     <section class="page-hero container">
       <span class="overline">Support</span>
       <h1>Questions, answers, and where to report problems</h1>
-      <p class="lede">Cadence is in active development. Everything routes through GitHub — issues are read, and bug reports genuinely shape what gets fixed first.</p>
+      <p class="lede">Cadence is in active development. Everything routes through GitHub - issues are read, and bug reports genuinely shape what gets fixed first.</p>
     </section>
 
     <section class="container" style="padding-bottom: 0;">
@@ -59,12 +59,12 @@
         <a class="card reveal" style="--i:0" href="https://github.com/JoeMighty/Cadence/issues/new" target="_blank" rel="noopener">
           <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5m0 3.5v.01"/></svg>
           <h3>Report a bug</h3>
-          <p>Something crashed, failed, or behaved wrong. Include your Windows version, GPU, and what you were doing — screenshots help.</p>
+          <p>Something crashed, failed, or behaved wrong. Include your Windows version, GPU, and what you were doing - screenshots help.</p>
         </a>
         <a class="card reveal" style="--i:1" href="https://github.com/JoeMighty/Cadence/issues" target="_blank" rel="noopener">
           <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.3 8.6 8.6 0 0 1-3.9-.9L3 20l1.1-5.1a8.2 8.2 0 0 1-1-3.9A8.38 8.38 0 0 1 11.6 2.7a8.38 8.38 0 0 1 9.4 8.8Z"/></svg>
           <h3>Ask a question</h3>
-          <p>Setup trouble, feature questions, or ideas. Open an issue — there are no dumb questions during a pre-release.</p>
+          <p>Setup trouble, feature questions, or ideas. Open an issue - there are no dumb questions during a pre-release.</p>
         </a>
       </div>
     </section>
@@ -84,7 +84,7 @@
           <div>The installer isn't code-signed yet, so SmartScreen shows a blue &ldquo;Windows protected your PC&rdquo; screen. Click <strong>More info</strong>, then <strong>Run anyway</strong>. Code signing is planned.</div>
         </details>
         <details>
-          <summary>Generation says a model isn't installed — what do I do?</summary>
+          <summary>Generation says a model isn't installed - what do I do?</summary>
           <div>The installer ships the app and engine, but not the ~10&nbsp;GB models. Click <em>See what's missing</em> on the Generate screen for a live checklist, or run <code>setup-backends.ps1</code> once (see the <a href="setup.html">setup guide</a>); it installs them into <code>Music\Cadence\vendor</code>, where Cadence looks. Then fully restart the app.</div>
         </details>
         <details>
@@ -93,11 +93,11 @@
         </details>
         <details>
           <summary>Can I write my own lyrics?</summary>
-          <div>Yes. Pick a voice (not Instrumental), open <strong>+&nbsp;Advanced</strong> under the prompt, and paste them into the <strong>Lyrics</strong> box — there's an <em>Insert example</em> template to start from. Shape the song with <code>[Verse]</code>, <code>[Chorus]</code>, and <code>[Bridge]</code> tags; keep lines short and singable, and leave genre and tempo in the prompt. Leave the box empty to let Cadence write them.</div>
+          <div>Yes. Pick a voice (not Instrumental), open <strong>+&nbsp;Advanced</strong> under the prompt, and paste them into the <strong>Lyrics</strong> box - there's an <em>Insert example</em> template to start from. Shape the song with <code>[Verse]</code>, <code>[Chorus]</code>, and <code>[Bridge]</code> tags; keep lines short and singable, and leave genre and tempo in the prompt. Leave the box empty to let Cadence write them.</div>
         </details>
         <details>
           <summary>Does Cadence need an internet connection?</summary>
-          <div>Only for the initial downloads — the app, the models, and dependencies. After that, generation and voice training run entirely offline. The exceptions are optional cloud providers (Claude for lyrics, Suno or ElevenLabs for generation), which you have to deliberately enable.</div>
+          <div>Only for the initial downloads - the app, the models, and dependencies. After that, generation and voice training run entirely offline. The exceptions are optional cloud providers (Claude for lyrics, Suno or ElevenLabs for generation), which you have to deliberately enable.</div>
         </details>
         <details>
           <summary>Is my voice uploaded anywhere?</summary>
@@ -105,15 +105,15 @@
         </details>
         <details>
           <summary>Do I need a GPU?</summary>
-          <div>An NVIDIA GPU with 8 GB of VRAM or more is strongly recommended — generation takes seconds on a modern card. Everything can fall back to CPU, but expect generation to take minutes rather than seconds.</div>
+          <div>An NVIDIA GPU with 8 GB of VRAM or more is strongly recommended - generation takes seconds on a modern card. Everything can fall back to CPU, but expect generation to take minutes rather than seconds.</div>
         </details>
         <details>
           <summary>Which languages are supported?</summary>
-          <div>Prompts and lyrics work in more than fifty languages, including mixed-language requests — for example, a prompt in English asking for lyrics in Malayalam. Quality is strongest in widely spoken languages and improves with a Claude API key for the lyric-writing step.</div>
+          <div>Prompts and lyrics work in more than fifty languages, including mixed-language requests - for example, a prompt in English asking for lyrics in Malayalam. Quality is strongest in widely spoken languages and improves with a Claude API key for the lyric-writing step.</div>
         </details>
         <details>
           <summary>Do I need any API keys?</summary>
-          <div>No. The default setup is fully local: Ollama handles lyric writing and ACE-Step handles music, both free and on your machine. A Claude, OpenAI, or Gemini key is an optional upgrade for lyric writing — pick the provider in Settings and paste the key right under it. Suno and ElevenLabs keys are optional alternatives for generation, later.</div>
+          <div>No. The default setup is fully local: Ollama handles lyric writing and ACE-Step handles music, both free and on your machine. A Claude, OpenAI, or Gemini key is an optional upgrade for lyric writing - pick the provider in Settings and paste the key right under it. Suno and ElevenLabs keys are optional alternatives for generation, later.</div>
         </details>
         <details>
           <summary>How much recording does voice training need?</summary>
@@ -121,11 +121,11 @@
         </details>
         <details>
           <summary>Where are my tracks saved?</summary>
-          <div>As WAV files under <code>Music\Cadence\output</code> by default, with an MP3 export option — or wherever you choose: set a &ldquo;Save to&rdquo; folder under <em>+&nbsp;Advanced</em> on the Generate screen, and optionally tick <em>Save stems separately</em> to get the vocals and instrumental as their own files. Tracks appear in the app's Library, but they're ordinary files — copy, move, or back them up like anything else on your disk.</div>
+          <div>As WAV files under <code>Music\Cadence\output</code> by default, with an MP3 export option - or wherever you choose: set a &ldquo;Save to&rdquo; folder under <em>+&nbsp;Advanced</em> on the Generate screen, and optionally tick <em>Save stems separately</em> to get the vocals and instrumental as their own files. Tracks appear in the app's Library, but they're ordinary files - copy, move, or back them up like anything else on your disk.</div>
         </details>
         <details>
           <summary>Is there a macOS or Linux version?</summary>
-          <div>Not yet — Windows is the focus while the core settles. Cross-platform builds (Apple Silicon and Linux CUDA) are Phase&nbsp;8 on the <a href="roadmap.html">roadmap</a>.</div>
+          <div>Not yet - Windows is the focus while the core settles. Cross-platform builds (Apple Silicon and Linux CUDA) are Phase&nbsp;8 on the <a href="roadmap.html">roadmap</a>.</div>
         </details>
       </div>
     </section>
@@ -133,7 +133,7 @@
     <section class="section container" style="padding-top: 0; padding-bottom: 0;">
       <div class="cta-panel reveal">
         <span class="overline">Still need help</span>
-        <h2 style="margin-top:14px;">Open an issue — it goes straight to the builder</h2>
+        <h2 style="margin-top:14px;">Open an issue - it goes straight to the builder</h2>
         <p>One-person project, no support tiers, no bots closing your ticket after three days.</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/issues/new" target="_blank" rel="noopener">Open an issue</a>
