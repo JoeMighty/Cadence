@@ -83,6 +83,30 @@
       </div>
     </section>
 
+    <!-- system requirements -->
+    <section class="section container" id="requirements" style="padding-bottom: 0;">
+      <div class="section-head reveal">
+        <span class="overline">System requirements</span>
+        <h2>Can your PC run it?</h2>
+      </div>
+      <div class="table-wrap reveal">
+        <table class="req-table">
+          <thead>
+            <tr><th>Component</th><th>Minimum</th><th>Recommended</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Windows</td><td>10, 64-bit</td><td>11</td></tr>
+            <tr><td>GPU</td><td>NVIDIA with 8&nbsp;GB VRAM (CUDA)</td><td>RTX 3080-class or newer, 10&nbsp;GB+ VRAM — what Cadence is developed and tested on</td></tr>
+            <tr><td>RAM</td><td>16&nbsp;GB</td><td>32&nbsp;GB</td></tr>
+            <tr><td>Disk</td><td>30&nbsp;GB free</td><td>50&nbsp;GB+ on an SSD — the AI backends and model weights take ~20&nbsp;GB, plus your tracks</td></tr>
+            <tr><td>Internet</td><td colspan="2">Broadband for the one-time setup (~10&nbsp;GB of model weights). Generation runs offline after that</td></tr>
+            <tr><td>Microphone</td><td>Any, for voice training</td><td>A decent mic in a quiet room — cleaner takes train a better voice</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted reveal" style="margin-top: 14px; font-size: var(--step--1);">No compatible GPU? Everything still runs on the CPU — expect minutes per song instead of seconds, and slow voice training. The one-time model setup also needs <code>git</code> and <code>uv</code> installed.</p>
+    </section>
+
     <!-- getting started, step by step (installer) -->
     <section class="section container">
       <div class="section-head reveal">
