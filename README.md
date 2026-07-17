@@ -28,7 +28,8 @@ minutes of your own speech — on your GPU, with no per-song cost.
   `[Verse]` / `[Chorus]` / `[Bridge]` tags.
 - **A voice that never drifts** — train once from a short reading session; every track sings in
   that same voice. Profiles carry a vocal range (male/female) so generation starts in the right
-  register — or skip training and pick a generic **Male** / **Female** voice, or **Instrumental**.
+  register — or skip training and pick a generic **Male** / **Female** voice (the music
+  model's own synthesized singer, not a real person), or **Instrumental**.
 - **Songs up to 5 minutes** — or set Length to *Auto* and the song sizes itself to the lyrics.
 - **Your files, your folders** — tracks land in `Music\Cadence` (or any folder you choose per
   generation), with optional separated stems (`.vocals.wav` + `.instrumental.wav`), and WAV/MP3

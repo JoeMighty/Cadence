@@ -7,7 +7,8 @@ All notable changes to Cadence. Installers for every version are on
 
 - Generate splits into two tabs: **Describe it** (Cadence writes the lyrics) and
   **Your lyrics** (sung exactly as written, with an example template and a style line).
-- Generic **Male** / **Female** voices — sing without training a profile.
+- Generic **Male** / **Female** voices — sing without training a profile (the music model's
+  own synthesized singer, not a real person).
 - **OpenAI** and **Gemini** join Ollama and Claude as lyric writers; Settings gets a
   provider dropdown with the API key field directly under it.
 - First launch opens the setup checklist when something's missing, or shows a one-time
