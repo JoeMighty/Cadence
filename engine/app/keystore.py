@@ -10,7 +10,7 @@ from __future__ import annotations
 import keyring
 
 SERVICE = "cadence"
-KNOWN = ("claude", "suno", "elevenlabs")
+KNOWN = ("claude", "openai", "gemini", "suno", "elevenlabs")
 
 
 def set_secret(name: str, value: str) -> None:

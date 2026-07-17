@@ -148,6 +148,7 @@ export interface ComposeOptions {
   lyrics?: string;
   output_dir?: string;
   save_stems?: boolean;
+  vocal_gender?: "male" | "female";
 }
 
 export async function compose(opts: ComposeOptions): Promise<{ job_id: string }> {
@@ -182,10 +183,11 @@ export async function deleteTrack(trackId: string): Promise<void> {
 
 // ---------- settings / secrets / system ----------
 
-export type SecretName = "claude" | "suno" | "elevenlabs";
+export type SecretName = "claude" | "openai" | "gemini" | "suno" | "elevenlabs";
+export type TextProvider = "ollama" | "claude" | "openai" | "gemini";
 
 export interface Settings {
-  text_provider: "ollama" | "claude";
+  text_provider: TextProvider;
   secrets: Record<SecretName, boolean>;
 }
 
@@ -206,7 +208,7 @@ export async function getSettings(): Promise<Settings> {
   return json(await fetch(`${BASE}/settings`));
 }
 
-export async function updateSettings(text_provider: "ollama" | "claude"): Promise<Settings> {
+export async function updateSettings(text_provider: TextProvider): Promise<Settings> {
   return json(
     await fetch(`${BASE}/settings`, {
       method: "PUT",

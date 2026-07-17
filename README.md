@@ -23,23 +23,52 @@ minutes of your own speech — on your GPU, with no per-song cost.
 
 ## What it does
 
-- **A voice that never drifts** — train once from a short reading session; every track sings in that same voice.
-- **Any language** — prompt in one language, sing in another; lyrics and style come from a language model.
-- **Local by default** — generation runs on your own GPU. No subscription, no upload. Cloud providers are optional.
-- **A native desktop app** — Tauri, not a browser tab.
+- **Describe it, or paste your own lyrics** — two tabs on Generate: a plain-language prompt
+  (Cadence writes the lyrics), or your own lyrics sung exactly as written, shaped with
+  `[Verse]` / `[Chorus]` / `[Bridge]` tags.
+- **A voice that never drifts** — train once from a short reading session; every track sings in
+  that same voice. Profiles carry a vocal range (male/female) so generation starts in the right
+  register — or skip training and pick a generic **Male** / **Female** voice, or **Instrumental**.
+- **Songs up to 5 minutes** — or set Length to *Auto* and the song sizes itself to the lyrics.
+- **Your files, your folders** — tracks land in `Music\Cadence` (or any folder you choose per
+  generation), with optional separated stems (`.vocals.wav` + `.instrumental.wav`), and WAV/MP3
+  export from the Library.
+- **Any language, any provider** — lyrics come from Ollama (local, free), Claude, OpenAI, or
+  Gemini; keys live in the OS keychain.
+- **Local by default** — generation runs on your own GPU. No subscription, no upload, no
+  per-song cost. A native Tauri app, not a browser tab.
 
-Four screens: **Generate** (prompt → song), **Voice** (record and train), **Library** (play, delete, export WAV/MP3), and **Settings** (provider toggle, API keys in the OS keychain, GPU status).
+Four screens: **Generate**, **Voice** (record and train), **Library**, and **Settings**
+(provider + keys, storage location, GPU status, update check). First launch shows a live
+setup checklist if anything's missing — and a "good to go" when nothing is.
 
 ## How it works
 
 ```
-prompt ─▶ text provider ─▶ ACE-Step ─▶ Demucs ─▶ RVC (your voice) ─▶ remix ─▶ track
-         (Ollama/Claude)   (music)    (split)   (re-voice vocal)   (recombine)
+prompt or lyrics ─▶ text provider ─▶ ACE-Step ─▶ Demucs ─▶ RVC (your voice) ─▶ remix ─▶ track
+                    (Ollama/Claude/    (music)    (split)   (re-voice vocal)    (recombine)
+                     OpenAI/Gemini)
 ```
 
-The text provider turns a prompt into a style caption and structured lyrics. ACE-Step generates
-the track; Demucs isolates the vocal so RVC re-voices only the vocal (not the full mix); the
-converted vocal is remixed over the original instrumental.
+The text provider turns a prompt into a style caption and structured lyrics (skipped when you
+bring your own). ACE-Step generates the track; Demucs isolates the vocal so RVC re-voices only
+the vocal (not the full mix); the converted vocal is remixed over the original instrumental.
+
+## Install (Windows)
+
+1. Download the `.msi` from the [latest release](https://github.com/JoeMighty/Cadence/releases)
+   (unsigned for now — SmartScreen: *More info → Run anyway*).
+2. Install the AI backends once (needs `git` and `uv` on PATH):
+
+   ```
+   git clone https://github.com/JoeMighty/Cadence.git
+   powershell -ExecutionPolicy Bypass -File Cadence\scripts\setup-backends.ps1
+   ```
+
+   They land in `Music\Cadence\vendor`, where the app looks. The in-app checklist
+   (*See what's missing*) tracks the same steps.
+3. Open Cadence, wait for the green **Engine online** dot, and generate. The first song
+   downloads the model weights (~10 GB).
 
 ## Architecture
 
@@ -47,7 +76,8 @@ converted vocal is remixed over the original instrumental.
   shell starts the engine as a bundled sidecar and stops it on exit.
 - `engine/` — local Python (FastAPI) engine that orchestrates generation, voice training, and
   conversion, called over `localhost`. It drives ACE-Step and Applio (RVC) in their own
-  environments under `engine/vendor/`.
+  environments under `Music\Cadence\vendor` (installed apps) or `engine/vendor/` (dev checkouts;
+  `setup-backends.ps1 -MoveFrom` keeps both working via junctions).
 
 ## Running from source
 

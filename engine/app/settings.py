@@ -73,8 +73,10 @@ APPLIO_DIR = Path(os.getenv("CADENCE_APPLIO_DIR", VENDOR_ROOT / "Applio"))
 OLLAMA_URL = os.getenv("CADENCE_OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("CADENCE_OLLAMA_MODEL", "qwen3.5:9b")
 
-# Cloud text provider (optional). Claude, keyed from the OS keychain.
+# Cloud text providers (optional), keyed from the OS keychain.
 CLAUDE_MODEL = os.getenv("CADENCE_CLAUDE_MODEL", "claude-opus-4-8")
+OPENAI_MODEL = os.getenv("CADENCE_OPENAI_MODEL", "gpt-4.1-mini")
+GEMINI_MODEL = os.getenv("CADENCE_GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def setup_hint() -> str:

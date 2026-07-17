@@ -64,8 +64,13 @@ def structure_prompt(prompt: str, instrumental: bool = False) -> dict[str, Any]:
             "vocal_language": "en",
             "bpm": 92,
         }
-    if db.get_setting("text_provider", "ollama") == "claude":
+    provider = db.get_setting("text_provider", "ollama")
+    if provider == "claude":
         return _via_claude(prompt, instrumental)
+    if provider == "openai":
+        return _via_openai(prompt, instrumental)
+    if provider == "gemini":
+        return _via_gemini(prompt, instrumental)
     return _via_ollama(prompt, instrumental)
 
 
@@ -121,6 +126,84 @@ def _finalize(obj: dict[str, Any], instrumental: bool) -> dict[str, Any]:
         "vocal_language": _normalize_lang(obj.get("vocal_language", "en")),
         "bpm": int(obj["bpm"]) if str(obj.get("bpm", "")).strip().isdigit() else None,
     }
+
+
+def _post_json(url: str, payload: dict, headers: dict[str, str], label: str) -> dict[str, Any]:
+    """POST JSON and decode the response, with provider-flavored errors."""
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json", **headers},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            raise TextProviderError(f"{label} rejected the API key. Check it in Settings.") from exc
+        detail = ""
+        try:
+            detail = exc.read().decode()[:300]
+        except Exception:
+            pass
+        raise TextProviderError(f"{label} request failed ({exc.code}): {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise TextProviderError(f"Could not reach {label}: {exc}") from exc
+
+
+def _via_openai(prompt: str, instrumental: bool = False) -> dict[str, Any]:
+    key = keystore.get_secret("openai")
+    if not key:
+        raise TextProviderError("No OpenAI API key set. Add one in Settings, or switch provider.")
+    data = _post_json(
+        "https://api.openai.com/v1/chat/completions",
+        {
+            "model": settings.OPENAI_MODEL,
+            "messages": [
+                {"role": "system", "content": _SYSTEM},
+                {"role": "user", "content": _user_message(prompt, instrumental)},
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "song", "schema": _CLAUDE_SCHEMA, "strict": True},
+            },
+        },
+        {"Authorization": f"Bearer {key}"},
+        "OpenAI",
+    )
+    content = (((data.get("choices") or [{}])[0]).get("message") or {}).get("content", "")
+    try:
+        obj = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise TextProviderError(f"OpenAI returned invalid JSON: {exc}") from exc
+    return _finalize(obj, instrumental)
+
+
+def _via_gemini(prompt: str, instrumental: bool = False) -> dict[str, Any]:
+    key = keystore.get_secret("gemini")
+    if not key:
+        raise TextProviderError("No Gemini API key set. Add one in Settings, or switch provider.")
+    data = _post_json(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent",
+        {
+            "systemInstruction": {"parts": [{"text": _SYSTEM}]},
+            "contents": [{"role": "user", "parts": [{"text": _user_message(prompt, instrumental)}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": _SCHEMA,
+            },
+        },
+        {"x-goog-api-key": key},
+        "Gemini",
+    )
+    parts = (((data.get("candidates") or [{}])[0]).get("content") or {}).get("parts") or [{}]
+    text = parts[0].get("text", "")
+    try:
+        obj = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise TextProviderError(f"Gemini returned invalid JSON: {exc}") from exc
+    return _finalize(obj, instrumental)
 
 
 # Structured-output schema for Claude (subset the API supports: no min/max).

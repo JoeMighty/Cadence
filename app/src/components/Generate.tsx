@@ -74,7 +74,9 @@ function stepIndex(detail: string): number {
 
 export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
+  const [mode, setMode] = useState<"prompt" | "lyrics">("prompt");
   const [prompt, setPrompt] = useState("");
+  const [styleText, setStyleText] = useState("");
   const [voiceId, setVoiceId] = useState<string>("instrumental");
   const [advanced, setAdvanced] = useState(false);
   const [duration, setDuration] = useState<number | "auto">(30);
@@ -83,6 +85,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   const [saveStems, setSaveStems] = useState(false);
   const [backendReady, setBackendReady] = useState(true);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [welcome, setWelcome] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,8 +93,19 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
 
   const ready = profiles.filter((p) => p.status === "ready");
   const instrumental = voiceId === "instrumental";
+  const genericVoice = voiceId === "male" || voiceId === "female";
   const track: Track | null = job?.status === "done" ? job.result?.track ?? null : null;
   const running = jobId != null && job?.status !== "done" && job?.status !== "error";
+  const canGenerate =
+    mode === "prompt" ? !!prompt.trim() : !!lyrics.trim() && !!styleText.trim();
+
+  // Lyrics always need a singer: leaving Instrumental picks a sensible voice.
+  function switchMode(next: "prompt" | "lyrics") {
+    setMode(next);
+    if (next === "lyrics" && voiceId === "instrumental") {
+      setVoiceId(ready[0]?.id ?? "female");
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -136,8 +150,22 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
         if (health.mock || health.acestep_installed) {
           missesRef.current = 0;
           setBackendReady(true);
+          // First run with everything in place: say so once, then stay quiet.
+          try {
+            if (!localStorage.getItem("cadence-welcomed")) {
+              setWelcome(true);
+              localStorage.setItem("cadence-welcomed", "1");
+            }
+          } catch {}
         } else if (++missesRef.current >= 2) {
           setBackendReady(false);
+          // Fresh install with missing pieces: open the guide once per launch.
+          try {
+            if (!sessionStorage.getItem("cadence-guide-shown")) {
+              setGuideOpen(true);
+              sessionStorage.setItem("cadence-guide-shown", "1");
+            }
+          } catch {}
         }
       } catch {
         /* engine offline; the shell surfaces that separately */
@@ -174,17 +202,18 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   }, [jobId]);
 
   async function onGenerate() {
-    if (!prompt.trim()) return;
+    if (!canGenerate) return;
     setBusy(true);
     setError(null);
     setJob(null);
     try {
       const res = await compose({
-        prompt: prompt.trim(),
+        prompt: (mode === "lyrics" ? styleText : prompt).trim(),
         instrumental,
-        voice_profile_id: instrumental ? undefined : voiceId,
+        voice_profile_id: instrumental || genericVoice ? undefined : voiceId,
+        vocal_gender: genericVoice ? (voiceId as "male" | "female") : undefined,
         duration: duration === "auto" ? undefined : duration,
-        lyrics: !instrumental && lyrics.trim() ? lyrics.trim() : undefined,
+        lyrics: mode === "lyrics" && !instrumental ? lyrics.trim() : undefined,
         output_dir: outputDir.trim() || undefined,
         save_stems: saveStems || undefined,
       });
@@ -225,51 +254,123 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
       )}
       <SetupGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
 
+      {welcome && backendReady && (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-success/30 bg-success/5 px-4 py-3 text-sm">
+          <p>
+            <span className="font-medium">You&apos;re good to go</span> — everything&apos;s
+            installed. Describe a song and hit Generate, or train a voice first.
+          </p>
+          <button
+            onClick={() => setWelcome(false)}
+            aria-label="Dismiss"
+            className="shrink-0 rounded-lg p-1 text-foreground-secondary hover:text-foreground"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="mb-6 rounded-xl border border-error/30 bg-error/5 px-4 py-3 text-sm text-error">
           {error}
         </div>
       )}
 
-      <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="A slow bossa nova about rain on the window, in Portuguese…"
-        rows={3}
-        disabled={running}
-        className="w-full resize-none rounded-2xl border border-border bg-surface px-5 py-4 text-lg leading-relaxed outline-none transition-colors focus:border-accent disabled:opacity-60"
-      />
+      {/* input mode tabs */}
+      <div className="mb-3 flex gap-1 rounded-full border border-border bg-surface p-1 text-sm font-medium w-fit">
+        <TabButton active={mode === "prompt"} onClick={() => switchMode("prompt")}>
+          Describe it
+        </TabButton>
+        <TabButton active={mode === "lyrics"} onClick={() => switchMode("lyrics")}>
+          Your lyrics
+        </TabButton>
+      </div>
+
+      {mode === "prompt" ? (
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="A slow bossa nova about rain on the window, in Portuguese…"
+          rows={3}
+          disabled={running}
+          className="w-full resize-none rounded-2xl border border-border bg-surface px-5 py-4 text-lg leading-relaxed outline-none transition-colors focus:border-accent disabled:opacity-60"
+        />
+      ) : (
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <p className="text-xs text-foreground-secondary">
+              Sung exactly as written — shape it with{" "}
+              <span className="font-mono">[Verse]</span>,{" "}
+              <span className="font-mono">[Chorus]</span>,{" "}
+              <span className="font-mono">[Bridge]</span> tags.
+            </p>
+            <button
+              onClick={() => setLyrics(EXAMPLE_LYRICS)}
+              disabled={running}
+              className="font-mono text-xs text-accent hover:underline"
+            >
+              Insert example
+            </button>
+          </div>
+          <textarea
+            value={lyrics}
+            onChange={(e) => setLyrics(e.target.value)}
+            placeholder={"[Verse]\nYour first line here…\n\n[Chorus]\nThe hook you want remembered"}
+            rows={10}
+            disabled={running}
+            className="w-full resize-y rounded-2xl border border-border bg-surface px-5 py-4 font-mono text-sm leading-relaxed outline-none transition-colors focus:border-accent disabled:opacity-60"
+          />
+          <input
+            type="text"
+            value={styleText}
+            onChange={(e) => setStyleText(e.target.value)}
+            disabled={running}
+            placeholder="Style: dreamy synth-pop, 100 bpm, warm vocals, English"
+            className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent disabled:opacity-60"
+          />
+          <p className="mt-1.5 text-xs leading-relaxed text-foreground-secondary">
+            Keep lines short and singable and repeat the chorus word-for-word. Genre, tempo, and
+            instruments go in the style line — the model reads section tags, not chords. Set
+            Length to <em>Auto</em> under Advanced and the song sizes itself to your lyrics.
+          </p>
+        </div>
+      )}
 
       {/* voice + generate row */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-xs uppercase tracking-widest text-foreground-secondary">
             Voice
           </span>
-          {ready.length === 0 ? (
+          {ready.map((p) => (
+            <VoiceChip key={p.id} label={p.name} active={voiceId === p.id} onClick={() => setVoiceId(p.id)} />
+          ))}
+          {ready.length === 0 && (
             <button
               onClick={goToVoice}
               className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground-secondary hover:border-accent hover:text-accent"
             >
               Train a voice →
             </button>
-          ) : (
-            <>
-              {ready.map((p) => (
-                <VoiceChip key={p.id} label={p.name} active={voiceId === p.id} onClick={() => setVoiceId(p.id)} />
-              ))}
-            </>
           )}
+          <VoiceChip label="Male" active={voiceId === "male"} onClick={() => setVoiceId("male")} />
           <VoiceChip
-            label="Instrumental"
-            active={instrumental}
-            onClick={() => setVoiceId("instrumental")}
+            label="Female"
+            active={voiceId === "female"}
+            onClick={() => setVoiceId("female")}
           />
+          {mode === "prompt" && (
+            <VoiceChip
+              label="Instrumental"
+              active={instrumental}
+              onClick={() => setVoiceId("instrumental")}
+            />
+          )}
         </div>
 
         <button
           onClick={onGenerate}
-          disabled={busy || running || !prompt.trim()}
+          disabled={busy || running || !canGenerate}
           className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-8 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
         >
           {running ? "Generating…" : "Generate"}
@@ -278,22 +379,12 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
 
       {/* advanced */}
       <div className="mt-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setAdvanced((a) => !a)}
-            className="font-mono text-xs uppercase tracking-widest text-foreground-secondary hover:text-foreground"
-          >
-            {advanced ? "− Advanced" : "+ Advanced"}
-          </button>
-          {!advanced && !instrumental && (
-            <button
-              onClick={() => setAdvanced(true)}
-              className="font-mono text-xs text-accent hover:underline"
-            >
-              ♪ Paste your own lyrics
-            </button>
-          )}
-        </div>
+        <button
+          onClick={() => setAdvanced((a) => !a)}
+          className="font-mono text-xs uppercase tracking-widest text-foreground-secondary hover:text-foreground"
+        >
+          {advanced ? "− Advanced" : "+ Advanced"}
+        </button>
         {advanced && (
           <div className="mt-3 flex flex-col gap-4 rounded-xl border border-border bg-surface px-4 py-4">
             <div>
@@ -353,41 +444,13 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
               </span>
             </label>
 
-            {!instrumental && (
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-sm text-foreground-secondary">Lyrics (optional)</label>
-                  <button
-                    onClick={() => setLyrics(EXAMPLE_LYRICS)}
-                    className="font-mono text-xs text-accent hover:underline"
-                  >
-                    Insert example
-                  </button>
-                </div>
-                <textarea
-                  value={lyrics}
-                  onChange={(e) => setLyrics(e.target.value)}
-                  disabled={running}
-                  rows={7}
-                  placeholder="Leave empty to let Cadence write the lyrics, or paste your own…"
-                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm leading-relaxed outline-none focus:border-accent"
-                />
-                <p className="mt-1.5 text-xs leading-relaxed text-foreground-secondary">
-                  Shape the structure with <span className="font-mono">[Verse]</span>,{" "}
-                  <span className="font-mono">[Chorus]</span>, and{" "}
-                  <span className="font-mono">[Bridge]</span> tags. Keep lines short and singable;
-                  put the genre, tempo, and instruments in the prompt above — the model reads
-                  section tags, not chords.
-                </p>
-              </div>
-            )}
           </div>
         )}
       </div>
 
       {/* status */}
       {jobId && job && job.status !== "done" && (
-        <StatusCard job={job} instrumental={instrumental} />
+        <StatusCard job={job} instrumental={instrumental || genericVoice} />
       )}
       {job?.status === "error" && (
         <div className="mt-6 rounded-2xl border border-error/30 bg-error/5 p-5 text-sm text-error">
@@ -468,6 +531,29 @@ function Result({ track }: { track: Track }) {
         </pre>
       )}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full px-4 py-1.5 transition-colors ${
+        active
+          ? "bg-accent text-white"
+          : "text-foreground-secondary hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

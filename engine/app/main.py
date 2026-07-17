@@ -285,6 +285,9 @@ class ComposeRequest(BaseModel):
     output_dir: str = ""
     # Also save the separated stems (vocals + instrumental) next to the track.
     save_stems: bool = False
+    # Sing with a generic voice in this register instead of a trained profile.
+    # Ignored when a voice_profile_id is given (the profile's range wins).
+    vocal_gender: Literal["", "male", "female"] = ""
 
 
 @app.post("/compose")
@@ -332,9 +335,10 @@ async def compose(req: ComposeRequest) -> dict:
                 raise
             structured = {"caption": req.prompt, "lyrics": "", "vocal_language": "en", "bpm": None}
         caption = structured["caption"] or req.prompt
-        # Generate the base vocal in the target voice's register — converting a
-        # male vocal onto a female voice model (or vice versa) sounds strained.
-        gender = (profile or {}).get("gender", "")
+        # Generate the base vocal in the target register — the profile's range
+        # when converting (a cross-register conversion sounds strained), or the
+        # requested generic voice when singing without a profile.
+        gender = (profile or {}).get("gender", "") or req.vocal_gender
         if gender and not req.instrumental and f"{gender} vocal" not in caption.lower():
             caption = f"{caption}, {gender} vocals"
         lyrics = user_lyrics or structured["lyrics"]
@@ -528,8 +532,8 @@ def get_settings() -> dict:
 @app.put("/settings")
 def update_settings(req: SettingsUpdate) -> dict:
     if req.text_provider is not None:
-        if req.text_provider not in ("ollama", "claude"):
-            raise HTTPException(422, "text_provider must be 'ollama' or 'claude'")
+        if req.text_provider not in ("ollama", "claude", "openai", "gemini"):
+            raise HTTPException(422, "text_provider must be ollama, claude, openai, or gemini")
         db.set_setting("text_provider", req.text_provider)
     return _settings_payload()
 

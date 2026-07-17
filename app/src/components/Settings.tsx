@@ -16,11 +16,19 @@ import {
 import Loading from "@/components/Loading";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
+import type { TextProvider } from "@/lib/engine";
 
 const KEYS: { name: SecretName; label: string; hint: string }[] = [
-  { name: "claude", label: "Claude", hint: "Better multilingual lyrics" },
   { name: "suno", label: "Suno", hint: "Optional cloud music (later)" },
   { name: "elevenlabs", label: "ElevenLabs", hint: "Optional cloud voice (later)" },
+];
+
+// The dropdown of who writes lyrics and style. Cloud providers need a key.
+const PROVIDERS: { id: TextProvider; label: string; secret: SecretName | null; hint: string }[] = [
+  { id: "ollama", label: "Ollama · local, no key", secret: null, hint: "Runs on your machine" },
+  { id: "claude", label: "Claude (Anthropic)", secret: "claude", hint: "Strong multilingual lyrics" },
+  { id: "openai", label: "OpenAI", secret: "openai", hint: "GPT models" },
+  { id: "gemini", label: "Google Gemini", secret: "gemini", hint: "Gemini models" },
 ];
 
 // Newest release (including pre-releases) at the top of the list.
@@ -133,7 +141,7 @@ export default function Settings() {
     }
   }
 
-  async function setProvider(p: "ollama" | "claude") {
+  async function setProvider(p: TextProvider) {
     try {
       setSettings(await updateSettings(p));
     } catch (e) {
@@ -162,35 +170,54 @@ export default function Settings() {
         <>
       {/* text provider */}
       <Section title="Text provider" subtitle="Who writes the lyrics and style">
-        <div className="flex gap-2">
-          <ProviderOption
-            label="Ollama"
-            sub={
-              system?.ollama.reachable
-                ? system.ollama.model_present
-                  ? `${system.ollama.model} · ready`
-                  : `running, ${system.ollama.model} missing`
-                : "not running"
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={settings.text_provider}
+              onChange={(e) => setProvider(e.target.value as TextProvider)}
+              className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-accent"
+            >
+              {PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <ProviderStatus provider={settings.text_provider} settings={settings} system={system} />
+          </div>
+
+          {(() => {
+            const active = PROVIDERS.find((p) => p.id === settings.text_provider);
+            if (!active?.secret) {
+              return system?.ollama.reachable && !system.ollama.model_present ? (
+                <p className="mt-3 text-sm text-foreground-secondary">
+                  Ollama is running but <span className="font-mono">{system.ollama.model}</span> is
+                  missing — run{" "}
+                  <code className="font-mono text-xs">ollama pull {system.ollama.model}</code>.
+                </p>
+              ) : null;
             }
-            active={settings?.text_provider === "ollama"}
-            ok={!!system?.ollama.reachable}
-            onClick={() => setProvider("ollama")}
-          />
-          <ProviderOption
-            label="Claude"
-            sub={settings?.secrets.claude ? "key saved" : "needs API key"}
-            active={settings?.text_provider === "claude"}
-            ok={!!settings?.secrets.claude}
-            onClick={() => setProvider("claude")}
-          />
+            return (
+              <div className="mt-4 border-t border-border pt-1">
+                <KeyRow
+                  name={active.secret}
+                  label={`${active.label.split(" ")[0]} key`}
+                  hint={active.hint}
+                  saved={!!settings.secrets[active.secret]}
+                  onChange={(s) => setSettings((prev) => (prev ? { ...prev, secrets: s } : prev))}
+                  onError={setError}
+                />
+              </div>
+            );
+          })()}
         </div>
-        {settings?.text_provider === "claude" && !settings.secrets.claude && (
-          <p className="mt-3 text-sm text-error">Add a Claude API key below to use this provider.</p>
-        )}
       </Section>
 
       {/* api keys */}
-      <Section title="API keys" subtitle="Stored in your OS keychain, never in plaintext">
+      <Section
+        title="Other API keys"
+        subtitle="For later cloud options. All keys live in your OS keychain, never in plaintext"
+      >
         <div className="divide-y divide-border rounded-xl border border-border bg-surface">
           {KEYS.map((k) => (
             <KeyRow
@@ -418,32 +445,33 @@ function KeyRow({
   );
 }
 
-function ProviderOption({
-  label,
-  sub,
-  active,
-  ok,
-  onClick,
+function ProviderStatus({
+  provider,
+  settings,
+  system,
 }: {
-  label: string;
-  sub: string;
-  active: boolean;
-  ok: boolean;
-  onClick: () => void;
+  provider: TextProvider;
+  settings: SettingsData;
+  system: SystemInfo | null;
 }) {
+  let ok = false;
+  let text = "";
+  if (provider === "ollama") {
+    ok = !!system?.ollama.reachable && !!system.ollama.model_present;
+    text = system?.ollama.reachable
+      ? system.ollama.model_present
+        ? `${system.ollama.model} · ready`
+        : "model missing"
+      : "not running";
+  } else {
+    ok = !!settings.secrets[provider as SecretName];
+    text = ok ? "key saved · ready" : "needs an API key";
+  }
   return (
-    <button
-      onClick={onClick}
-      className={`flex-1 rounded-xl border px-4 py-3 text-left transition-colors ${
-        active ? "border-accent bg-accent/5" : "border-border hover:border-foreground-secondary"
-      }`}
-    >
-      <div className="flex items-center gap-2 font-medium">
-        {label}
-        <span className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-success" : "bg-foreground-secondary"}`} />
-      </div>
-      <div className="font-mono text-xs text-foreground-secondary">{sub}</div>
-    </button>
+    <span className="flex items-center gap-2 font-mono text-xs text-foreground-secondary">
+      <span className={`h-2 w-2 rounded-full ${ok ? "bg-success" : "bg-error"}`} />
+      {text}
+    </span>
   );
 }
 
