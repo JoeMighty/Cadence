@@ -189,7 +189,8 @@ h3 {
   color: var(--text-2);
 }
 
-.overline .tick {
+.overline .tick,
+.muted .tick {
   color: var(--accent);
 }
 
