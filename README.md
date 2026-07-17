@@ -114,8 +114,9 @@ bundling the engine sidecar so the installed app starts and stops the engine on 
 
 ## Status
 
-Windows first; macOS and Linux later. Phases 0–7 shipped — see the
-[roadmap](https://joemighty.github.io/Cadence/roadmap.html).
+Windows first; macOS and Linux later. The full loop shipped — see the
+[roadmap](https://joemighty.github.io/Cadence/roadmap.html) for what's next and the
+[changelog](CHANGELOG.md) for version-by-version detail.
 
 ## Credit
 

@@ -71,6 +71,7 @@
               <li>Lyrics by Ollama (local, free), Claude, OpenAI, or Gemini — keys in the OS keychain</li>
               <li>Tracks in <code>Music\Cadence</code> or any folder you choose, with optional separated stems and WAV/MP3 export</li>
               <li>One .msi installer that runs its own engine, checks for updates, and walks you through setup on first launch</li>
+              <li><a href="https://github.com/JoeMighty/Cadence/releases/latest">Download the installer</a> · <a href="https://github.com/JoeMighty/Cadence/blob/main/CHANGELOG.md">full changelog</a></li>
             </ul>
           </div>
         </article>
@@ -86,6 +87,7 @@
             <ul>
               <li>Apple Silicon (MPS) backend and Linux CUDA profile</li>
               <li>Cross-platform GPU detection and CI builds</li>
+              <li>A shell version of the model setup script (today's is PowerShell only)</li>
             </ul>
           </div>
         </article>
@@ -99,8 +101,14 @@
             <h3>On the bench</h3>
             <p>Being explored, not yet promised.</p>
             <ul>
+              <li>Code signing for the installer — no more SmartScreen warning</li>
+              <li>Silent auto-update (today Cadence only tells you a newer version exists)</li>
               <li>Multiple voices in one song — tag sections with who sings them (<code>[Verse: Anna]</code>)</li>
-              <li>Code signing, then silent auto-update</li>
+              <li>Regenerate one section — redo just the chorus, not the whole track</li>
+              <li>Batch generation — queue several prompts and walk away</li>
+              <li>Export stems for tracks already in the Library (today stems save only at generation time)</li>
+              <li>Rename voice profiles</li>
+              <li>A local, telemetry-free error log you can open and attach to a bug report</li>
             </ul>
           </div>
         </article>
@@ -108,27 +116,6 @@
       </div>
     </section>
 
-    <!-- release history -->
-    <section class="section container">
-      <div class="section-head reveal">
-        <span class="overline">Release notes</span>
-        <h2>Version by version</h2>
-      </div>
-      <div class="table-wrap reveal">
-        <table class="req-table">
-          <tbody>
-            <tr><td>v0.1.7</td><td>Prompt and lyrics tabs, generic male/female voices, OpenAI and Gemini lyric writers, first-launch checklist</td></tr>
-            <tr><td>v0.1.6</td><td>Songs up to 5 minutes, Auto length that matches the lyrics, vocal range on voice profiles</td></tr>
-            <tr><td>v0.1.5</td><td>Data moves to <code>Music\Cadence</code>, storage override in Settings, custom save folders, separate stems, in-app setup checklist</td></tr>
-            <tr><td>v0.1.4</td><td>The app tells the engine where the models live</td></tr>
-            <tr><td>v0.1.3</td><td>The setup banner rechecks itself instead of latching</td></tr>
-            <tr><td>v0.1.2</td><td>Version number and update check in Settings</td></tr>
-            <tr><td>v0.1.1</td><td>Stable model folder and the one-time setup script</td></tr>
-            <tr><td>v0.1.0</td><td>First Windows installer — the full generate–train–library loop</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
 
     <section class="section container" style="padding-bottom: 0;">
       <div class="cta-panel reveal">
