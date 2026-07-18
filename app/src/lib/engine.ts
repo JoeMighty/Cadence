@@ -222,6 +222,19 @@ export async function getSystem(): Promise<SystemInfo> {
   return json(await fetch(`${BASE}/system`));
 }
 
+export interface ErrorLog {
+  dir: string;
+  text: string;
+}
+
+export async function getLogs(): Promise<ErrorLog> {
+  return json(await fetch(`${BASE}/logs`));
+}
+
+export async function clearLogs(): Promise<void> {
+  await fetch(`${BASE}/logs`, { method: "DELETE" });
+}
+
 export async function putSecret(name: SecretName, value: string): Promise<Record<SecretName, boolean>> {
   return json(
     await fetch(`${BASE}/secrets/${name}`, {

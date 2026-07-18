@@ -112,19 +112,43 @@ fn restart_engine(app: tauri::AppHandle) {
   start_engine(app);
 }
 
-/// Open the GitHub releases page in the default browser so the user can
-/// download a newer installer. Fixed URL — nothing from the webview is run.
-#[tauri::command]
-fn open_releases_page() {
+/// Open a URL or local folder with the OS default handler, no console flash.
+fn open_external(target: &str) {
   #[cfg(windows)]
   {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let _ = std::process::Command::new("cmd")
-      .args(["/C", "start", "", "https://github.com/JoeMighty/Cadence/releases"])
+      .args(["/C", "start", "", target])
       .creation_flags(CREATE_NO_WINDOW)
       .spawn();
   }
+  #[cfg(target_os = "macos")]
+  {
+    let _ = std::process::Command::new("open").arg(target).spawn();
+  }
+  #[cfg(all(unix, not(target_os = "macos")))]
+  {
+    let _ = std::process::Command::new("xdg-open").arg(target).spawn();
+  }
+}
+
+/// Open the GitHub releases page in the default browser so the user can
+/// download a newer installer. Fixed URL — nothing from the webview is run.
+#[tauri::command]
+fn open_releases_page() {
+  open_external("https://github.com/JoeMighty/Cadence/releases");
+}
+
+/// Open a local folder (e.g. the error log directory) in the file manager.
+/// Validated to an existing directory, so only a folder is ever opened.
+#[tauri::command]
+fn open_folder(path: String) -> Result<(), String> {
+  if !std::path::Path::new(&path).is_dir() {
+    return Err(format!("Not a folder: {path}"));
+  }
+  open_external(&path);
+  Ok(())
 }
 
 /// Start the bundled engine sidecar, unless an engine is already running
@@ -185,6 +209,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       ping_engine,
       open_releases_page,
+      open_folder,
       get_data_dir,
       set_data_dir,
       restart_engine
@@ -212,6 +237,14 @@ fn stop_engine(child: CommandChild) {
       .args(["/PID", &child.pid().to_string(), "/T", "/F"])
       .creation_flags(CREATE_NO_WINDOW)
       .status();
+  }
+  #[cfg(unix)]
+  {
+    // Same story on macOS/Linux: the onefile bootloader forks the real Python
+    // process. Kill the bootloader's children first, then the bootloader.
+    let pid = child.pid().to_string();
+    let _ = std::process::Command::new("pkill").args(["-9", "-P", &pid]).status();
+    let _ = std::process::Command::new("kill").args(["-9", &pid]).status();
   }
   let _ = child.kill();
 }

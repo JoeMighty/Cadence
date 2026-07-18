@@ -3,6 +3,15 @@
 All notable changes to Cadence. Installers for every version are on
 [GitHub Releases](https://github.com/JoeMighty/Cadence/releases).
 
+## v0.1.8 — 18 Jul 2026
+
+- **Error log** in Settings → Diagnostics: when a generation fails, the details
+  (with traceback) are written to a local log you can read, copy into a bug
+  report, clear, or open the folder for. Local only, nothing is sent anywhere.
+- Groundwork for macOS and Linux: the engine resolves venv paths, the GPU
+  probe, and keychain access per platform, and the app shell opens links and
+  shuts the engine down portably. No change to how Cadence behaves on Windows.
+
 ## v0.1.7 — 17 Jul 2026
 
 - Generate splits into two tabs: **Describe it** (Cadence writes the lyrics) and

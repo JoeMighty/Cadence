@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Awaitable, Callable, Optional
 
+from . import errorlog
+
 
 class JobStatus(str, Enum):
     QUEUED = "queued"
@@ -89,6 +91,7 @@ class JobQueue:
             except Exception as exc:  # noqa: BLE001 - job errors must never kill the worker
                 job.error = str(exc)
                 job.update(status=JobStatus.ERROR, detail="Failed")
+                errorlog.record(f"{job.kind} job {job.id} failed", exc)
             finally:
                 self._queue.task_done()
 

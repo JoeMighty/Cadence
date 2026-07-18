@@ -54,6 +54,10 @@ OUTPUT_DIR = Path(os.getenv("CADENCE_OUTPUT_DIR", DATA_ROOT / "output"))
 DB_PATH = Path(os.getenv("CADENCE_DB_PATH", DATA_ROOT / "cadence.db"))
 VOICE_DATA_DIR = Path(os.getenv("CADENCE_VOICE_DATA_DIR", DATA_ROOT / "voice_data"))
 
+# On-disk error log the user can read and attach to a bug report (local only).
+LOG_DIR = Path(os.getenv("CADENCE_LOG_DIR", DATA_ROOT / "logs"))
+LOG_PATH = LOG_DIR / "errors.log"
+
 # Clean speech required before voice training unlocks (seconds).
 VOICE_UNLOCK_SECONDS = int(os.getenv("CADENCE_VOICE_UNLOCK_SECONDS", "600"))
 # Default RVC training length; a real voice wants more, tests override this.
@@ -79,20 +83,34 @@ OPENAI_MODEL = os.getenv("CADENCE_OPENAI_MODEL", "gpt-4.1-mini")
 GEMINI_MODEL = os.getenv("CADENCE_GEMINI_MODEL", "gemini-2.5-flash")
 
 
+# The name of the one-time backend setup script, by platform.
+SETUP_SCRIPT = "scripts\\setup-backends.ps1" if os.name == "nt" else "scripts/setup-backends.sh"
+
+
 def setup_hint() -> str:
     """How to install the missing AI backends, worded for how Cadence is running."""
     if FROZEN:
         return (
             f"Install the AI backends into {VENDOR_ROOT} by running the one-time "
-            "setup script (scripts/setup-backends.ps1). See "
+            f"setup script ({SETUP_SCRIPT}). See "
             "https://joemighty.github.io/Cadence/setup.html."
         )
-    return "Run scripts/setup-backends.ps1, or 'uv sync' inside each engine/vendor backend."
+    return f"Run {SETUP_SCRIPT}, or 'uv sync' inside each engine/vendor backend."
+
+
+def _venv_python(venv_dir: Path) -> Path:
+    """The interpreter inside a uv/venv, wherever this OS puts it.
+
+    Windows venvs use Scripts\\python.exe; macOS and Linux use bin/python.
+    """
+    if os.name == "nt":
+        return venv_dir / ".venv" / "Scripts" / "python.exe"
+    return venv_dir / ".venv" / "bin" / "python"
 
 
 def acestep_python() -> Path:
-    return ACESTEP_DIR / ".venv" / "Scripts" / "python.exe"
+    return _venv_python(ACESTEP_DIR)
 
 
 def applio_python() -> Path:
-    return APPLIO_DIR / ".venv" / "Scripts" / "python.exe"
+    return _venv_python(APPLIO_DIR)

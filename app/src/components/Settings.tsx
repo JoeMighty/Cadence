@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  clearLogs,
   deleteSecret,
   getHealth,
+  getLogs,
   getSettings,
   getSystem,
   putSecret,
@@ -70,6 +72,8 @@ export default function Settings() {
   const [health, setHealth] = useState<Health | null>(null);
   const [storageMsg, setStorageMsg] = useState<string | null>(null);
   const [storageBusy, setStorageBusy] = useState(false);
+  const [log, setLog] = useState<{ dir: string; text: string } | null>(null);
+  const [logCopied, setLogCopied] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -103,6 +107,30 @@ export default function Settings() {
   useEffect(() => {
     loadStorage();
   }, [loadStorage]);
+
+  const loadLog = useCallback(() => {
+    getLogs().then(setLog).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadLog();
+  }, [loadLog]);
+
+  async function copyLog() {
+    if (!log?.text) return;
+    try {
+      await navigator.clipboard.writeText(log.text);
+      setLogCopied(true);
+      setTimeout(() => setLogCopied(false), 2000);
+    } catch {}
+  }
+
+  async function clearLog() {
+    try {
+      await clearLogs();
+      loadLog();
+    } catch {}
+  }
 
   async function applyDataDir(path: string) {
     setStorageBusy(true);
@@ -306,6 +334,61 @@ export default function Settings() {
             switch folders, run the setup script again for the new location or move the{" "}
             <span className="font-mono">vendor</span> folder yourself.
           </p>
+        </div>
+      </Section>
+
+      {/* diagnostics — the local error log, for bug reports */}
+      <Section title="Diagnostics" subtitle="A local error log, kept on this machine only">
+        <div className="rounded-xl border border-border bg-surface p-5 text-sm">
+          {log && log.text.trim() ? (
+            <>
+              <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs leading-relaxed text-foreground-secondary">
+                {log.text.trimEnd()}
+              </pre>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={copyLog}
+                  className="h-9 rounded-lg bg-accent px-4 text-sm font-medium text-white"
+                >
+                  {logCopied ? "Copied ✓" : "Copy log"}
+                </button>
+                <button
+                  onClick={() => invoke("open_folder", { path: log.dir })}
+                  className="h-9 rounded-lg border border-border px-4 text-sm text-foreground-secondary hover:border-accent hover:text-accent"
+                >
+                  Open folder
+                </button>
+                <button
+                  onClick={clearLog}
+                  className="h-9 rounded-lg border border-border px-3 text-sm text-foreground-secondary hover:border-error hover:text-error"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={loadLog}
+                  className="h-9 rounded-lg border border-border px-3 text-sm text-foreground-secondary hover:border-accent hover:text-accent"
+                >
+                  Refresh
+                </button>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-foreground-secondary">
+                If something breaks, copy this and paste it into a{" "}
+                <a
+                  href="https://github.com/JoeMighty/Cadence/issues/new"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-accent hover:underline"
+                >
+                  bug report
+                </a>
+                .
+              </p>
+            </>
+          ) : (
+            <p className="text-foreground-secondary">
+              No errors logged. If a generation fails, the details show up here.
+            </p>
+          )}
         </div>
       </Section>
 

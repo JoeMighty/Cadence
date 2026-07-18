@@ -22,13 +22,14 @@ from typing import Literal, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from . import (
     acestep_service,
     applio_service,
     db,
+    errorlog,
     keystore,
     mock_audio,
     settings,
@@ -53,6 +54,17 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     db.init_db()
+
+
+@app.exception_handler(Exception)
+async def _log_unhandled(request: Request, exc: Exception) -> JSONResponse:
+    # Genuine bugs (not the intentional HTTPExceptions, which have their own
+    # handler) get recorded so the user can read them in Settings and report.
+    errorlog.record(f"{request.method} {request.url.path}", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong in the engine. See the error log in Settings."},
+    )
 
 
 @app.get("/ping")
@@ -547,7 +559,10 @@ def get_secrets() -> dict:
 def put_secret(name: str, req: SecretUpdate) -> dict:
     if name not in keystore.KNOWN:
         raise HTTPException(404, f"Unknown secret '{name}'")
-    keystore.set_secret(name, req.value.strip())
+    try:
+        keystore.set_secret(name, req.value.strip())
+    except keystore.KeyringUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
     return keystore.status()
 
 
@@ -555,6 +570,18 @@ def put_secret(name: str, req: SecretUpdate) -> dict:
 def delete_secret(name: str) -> dict:
     keystore.clear_secret(name)
     return keystore.status()
+
+
+@app.get("/logs")
+def get_logs() -> dict:
+    """Recent errors, plus the folder they live in (for an Open button)."""
+    return {"dir": str(settings.LOG_DIR), "text": errorlog.tail()}
+
+
+@app.delete("/logs")
+def clear_logs() -> dict:
+    errorlog.clear()
+    return {"ok": True}
 
 
 @app.get("/system")
