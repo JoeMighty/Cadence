@@ -459,6 +459,73 @@ async def compose(req: ComposeRequest) -> dict:
     return {"job_id": job.id}
 
 
+class RepaintRequest(BaseModel):
+    start: float = Field(ge=0)
+    end: float = Field(gt=0)
+    # Optional new direction for the regenerated part; empty reuses the original.
+    prompt: str = ""
+
+
+@app.post("/tracks/{track_id}/repaint")
+async def repaint_track(track_id: str, req: RepaintRequest) -> dict:
+    """Regenerate one time range of an instrumental track, keeping the rest."""
+    track = db.get_track(track_id)
+    if track is None:
+        raise HTTPException(404, "No such track")
+    if not track["instrumental"]:
+        raise HTTPException(
+            409,
+            "Regenerating a section currently works on instrumental tracks. "
+            "Voice-track sections need per-part conversion, which is coming.",
+        )
+    if req.end <= req.start:
+        raise HTTPException(422, "The end of the section must come after the start.")
+    src = Path(track["audio_path"])
+    if not settings.MOCK and not src.exists():
+        raise HTTPException(409, "The original track's audio file is missing.")
+
+    async def runner(job: Job) -> None:
+        job.update(status=JobStatus.GENERATING, detail="Regenerating the section")
+        if settings.MOCK:
+            out = settings.OUTPUT_DIR / f"repaint-{job.id}.wav"
+            mock_audio.write_mock_track(out, seconds=max(req.end, 15))
+            audio_path = str(out)
+        else:
+            gen = await acestep_service.generate(
+                {
+                    "task_type": "repaint",
+                    "src_audio_path": str(src),
+                    "repainting_start": req.start,
+                    "repainting_end": req.end,
+                    "repaint_mode": "balanced",
+                    "prompt": req.prompt.strip() or track["caption"] or track["prompt"],
+                    "vocal_language": track["vocal_language"],
+                    "bpm": track["bpm"],
+                    "instrumental": True,
+                    "audio_format": "wav",
+                },
+                progress=lambda m: job.update(detail=m),
+            )
+            audio_path = gen["audio_path"]
+
+        new = db.create_track(
+            prompt=f"{track['prompt']} (regenerated {req.start:.0f}–{req.end:.0f}s)",
+            caption=track["caption"],
+            lyrics=track["lyrics"],
+            vocal_language=track["vocal_language"],
+            bpm=track["bpm"],
+            audio_path=audio_path,
+            voice_profile_id=None,
+            voice_name=None,
+            instrumental=1,
+        )
+        job.result = {"track": new}
+        job.update(status=JobStatus.DONE, detail="Done")
+
+    job = queue.submit(Job(kind="repaint", params={"track": track_id}), runner)
+    return {"job_id": job.id}
+
+
 @app.get("/tracks")
 def list_tracks() -> list[dict]:
     return db.list_tracks()

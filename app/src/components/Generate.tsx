@@ -6,6 +6,7 @@ import {
   getHealth,
   getJob,
   listProfiles,
+  repaintTrack,
   trackAudioUrl,
   type Job,
   type Track,
@@ -68,7 +69,12 @@ A quiet song before the night grows cold
 function stepIndex(detail: string): number {
   if (detail.startsWith("Writing")) return 0;
   if (/^(Converting|Separating|Remixing)/.test(detail)) return 2;
-  if (detail.toLowerCase().includes("music") || detail.startsWith("Starting")) return 1;
+  if (
+    detail.toLowerCase().includes("music") ||
+    detail.startsWith("Starting") ||
+    detail.startsWith("Regenerating")
+  )
+    return 1;
   return 0;
 }
 
@@ -86,6 +92,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   const [backendReady, setBackendReady] = useState(true);
   const [guideOpen, setGuideOpen] = useState(false);
   const [welcome, setWelcome] = useState(false);
+  const [repainting, setRepainting] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -206,6 +213,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
     setBusy(true);
     setError(null);
     setJob(null);
+    setRepainting(false);
     try {
       const res = await compose({
         prompt: (mode === "lyrics" ? styleText : prompt).trim(),
@@ -222,6 +230,20 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
       setError(e instanceof Error ? e.message : "Could not start generation");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Regenerate a time range of the finished track; the result flows through the
+  // same job poll and replaces the shown track when it lands.
+  async function startRepaint(trackId: string, start: number, end: number, part: string) {
+    setError(null);
+    setJob(null);
+    setRepainting(true);
+    try {
+      const res = await repaintTrack(trackId, start, end, part);
+      setJobId(res.job_id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not regenerate the section");
     }
   }
 
@@ -450,7 +472,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
 
       {/* status */}
       {jobId && job && job.status !== "done" && (
-        <StatusCard job={job} instrumental={instrumental || genericVoice} />
+        <StatusCard job={job} instrumental={repainting || instrumental || genericVoice} />
       )}
       {job?.status === "error" && (
         <div className="mt-6 rounded-2xl border border-error/30 bg-error/5 p-5 text-sm text-error">
@@ -459,7 +481,7 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
       )}
 
       {/* result */}
-      {track && <Result track={track} />}
+      {track && <Result track={track} onRepaint={running ? undefined : startRepaint} />}
     </div>
   );
 }
@@ -504,7 +526,30 @@ function StatusCard({ job, instrumental }: { job: Job; instrumental: boolean }) 
   );
 }
 
-function Result({ track }: { track: Track }) {
+function Result({
+  track,
+  onRepaint,
+}: {
+  track: Track;
+  onRepaint?: (trackId: string, start: number, end: number, part: string) => void;
+}) {
+  const [dur, setDur] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [start, setStart] = useState(0);
+  const [end, setEnd] = useState(15);
+  const [part, setPart] = useState("");
+  const isInstrumental = track.instrumental === 1;
+
+  function onLoaded(e: React.SyntheticEvent<HTMLAudioElement>) {
+    const d = Math.floor(e.currentTarget.duration || 0);
+    if (d > 0) {
+      setDur(d);
+      setEnd((prev) => (prev === 15 ? Math.min(15, d) : Math.min(prev, d)));
+    }
+  }
+
+  const validRange = end > start && end <= (dur || end);
+
   return (
     <div className="mt-6 rounded-2xl border border-border bg-surface p-6">
       <div className="mb-3 flex items-center gap-2">
@@ -524,11 +569,65 @@ function Result({ track }: { track: Track }) {
         )}
       </div>
       {track.caption && <p className="mb-4 text-sm text-foreground-secondary">{track.caption}</p>}
-      <audio controls src={trackAudioUrl(track.id)} className="w-full" />
+      <audio controls src={trackAudioUrl(track.id)} onLoadedMetadata={onLoaded} className="w-full" />
       {track.lyrics && (
         <pre className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap border-t border-border pt-4 font-sans text-sm leading-relaxed text-foreground-secondary">
           {track.lyrics}
         </pre>
+      )}
+
+      {onRepaint && isInstrumental && (
+        <div className="mt-4 border-t border-border pt-4">
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="font-mono text-xs uppercase tracking-widest text-foreground-secondary hover:text-foreground"
+          >
+            {open ? "− Regenerate a part" : "+ Regenerate a part"}
+          </button>
+          {open && (
+            <div className="mt-3 flex flex-col gap-3">
+              <p className="text-xs leading-relaxed text-foreground-secondary">
+                Keep the rest of the track, regenerate just this time range. Play it to find the
+                seconds you want{dur ? ` (track is ${dur}s)` : ""}.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <label className="text-foreground-secondary">From</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={dur || undefined}
+                  value={start}
+                  onChange={(e) => setStart(Math.max(0, Number(e.target.value)))}
+                  className="h-9 w-20 rounded-lg border border-border bg-background px-2.5 outline-none focus:border-accent"
+                />
+                <label className="text-foreground-secondary">to</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={dur || undefined}
+                  value={end}
+                  onChange={(e) => setEnd(Math.max(0, Number(e.target.value)))}
+                  className="h-9 w-20 rounded-lg border border-border bg-background px-2.5 outline-none focus:border-accent"
+                />
+                <span className="text-foreground-secondary">seconds</span>
+              </div>
+              <input
+                type="text"
+                value={part}
+                onChange={(e) => setPart(e.target.value)}
+                placeholder="Optional: a new direction for this part, e.g. add a piano solo"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <button
+                onClick={() => onRepaint(track.id, start, end, part)}
+                disabled={!validRange}
+                className="h-10 w-fit rounded-full bg-accent px-6 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Regenerate {start}s–{end}s
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -114,6 +114,13 @@ async def generate(params: dict[str, Any], progress=None) -> dict[str, Any]:
             body[key] = value
     if params.get("instrumental"):
         body["instrumental"] = True
+    # Repaint: regenerate a time range of an existing track, keeping the rest.
+    if params.get("task_type"):
+        body["task_type"] = params["task_type"]
+        for key in ("src_audio_path", "repainting_start", "repainting_end", "repaint_mode"):
+            value = params.get(key)
+            if value is not None:
+                body[key] = value
 
     data = await asyncio.to_thread(_http, "POST", f"{settings.ACESTEP_URL}/release_task", body, 120.0)
     task_id = (data.get("data") or {}).get("task_id")

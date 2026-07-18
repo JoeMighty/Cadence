@@ -3,6 +3,14 @@
 All notable changes to Cadence. Installers for every version are on
 [GitHub Releases](https://github.com/JoeMighty/Cadence/releases).
 
+## v0.1.9 — 18 Jul 2026
+
+- **Regenerate a section**: on a finished instrumental track, open "Regenerate a
+  part", pick a time range, and the model regenerates just that stretch (with an
+  optional new direction) while keeping the rest — a new track, the original
+  untouched. Uses ACE-Step's native repaint. Voice-track sections need per-part
+  conversion and are still to come.
+
 ## v0.1.8 — 18 Jul 2026
 
 - **Error log** in Settings → Diagnostics: when a generation fails, the details

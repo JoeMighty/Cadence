@@ -181,6 +181,21 @@ export async function deleteTrack(trackId: string): Promise<void> {
   await fetch(`${BASE}/tracks/${trackId}`, { method: "DELETE" });
 }
 
+export async function repaintTrack(
+  trackId: string,
+  start: number,
+  end: number,
+  prompt?: string,
+): Promise<{ job_id: string }> {
+  return json(
+    await fetch(`${BASE}/tracks/${trackId}/repaint`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start, end, prompt: prompt?.trim() || "" }),
+    }),
+  );
+}
+
 // ---------- settings / secrets / system ----------
 
 export type SecretName = "claude" | "openai" | "gemini" | "suno" | "elevenlabs";
