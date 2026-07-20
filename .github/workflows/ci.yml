@@ -1,0 +1,141 @@
+name: CI
+
+# Build the app and smoke-test the engine on Windows, macOS, and Linux.
+# On a version tag (v*), the build job also assembles a DRAFT GitHub release
+# with each OS's installer attached, ready for a human to review and publish.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Only the latest run per ref needs to finish; cancel superseded ones.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --- Engine: run the full pipeline in mock mode (no GPU, no network) -------
+  smoke:
+    name: Engine smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Sync engine deps
+        working-directory: engine
+        run: uv sync --no-dev
+
+      - name: Mock compose end to end
+        working-directory: engine
+        shell: bash
+        env:
+          CADENCE_MOCK: '1'
+          CADENCE_PORT: '8000'
+          # CADENCE_DATA_DIR only applies to the frozen sidecar; running from
+          # source honours CADENCE_DB_PATH, so isolate the DB with that.
+          CADENCE_DB_PATH: ${{ runner.temp }}/cadence.db
+        run: |
+          set -euo pipefail
+          uv run python run_engine.py &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+
+          # Wait for the engine to come up.
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health >/dev/null && break
+            sleep 1
+          done
+
+          echo "== /health =="
+          curl -sf http://127.0.0.1:8000/health | tee /dev/stderr | jq -e '.status == "ok" and .mock == true'
+          echo "== /system (exercises the GPU/Ollama probes portably) =="
+          curl -sf http://127.0.0.1:8000/system >/dev/null
+
+          echo "== POST /compose (instrumental, mock) =="
+          job=$(curl -sf -X POST http://127.0.0.1:8000/compose \
+                 -H 'Content-Type: application/json' \
+                 -d '{"prompt":"a calm ci test","instrumental":true,"duration":15}' | jq -r .job_id)
+          echo "job=$job"
+
+          st=""
+          for _ in $(seq 1 60); do
+            st=$(curl -sf "http://127.0.0.1:8000/status/$job" | jq -r .status)
+            echo "status=$st"
+            [ "$st" = done ] && break
+            [ "$st" = error ] && { curl -s "http://127.0.0.1:8000/status/$job"; exit 1; }
+            sleep 1
+          done
+          [ "$st" = done ]
+
+          echo "== /tracks (the produced track carries the liked field) =="
+          curl -sf http://127.0.0.1:8000/tracks | jq -e 'length >= 1 and (.[0] | has("liked"))'
+
+  # --- App: build the Tauri bundle (+ draft release on a tag) ----------------
+  build:
+    name: Build ${{ matrix.os }}
+    needs: smoke
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            bundles: deb
+          - os: macos-latest
+            bundles: dmg
+          - os: windows-latest
+            bundles: msi
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf build-essential curl wget file
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install frontend deps
+        working-directory: app
+        run: npm ci
+
+      - name: Build engine sidecar
+        shell: bash
+        run: bash scripts/build-sidecar.sh
+
+      - name: Build app (draft release on tag)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: app
+          args: --bundles ${{ matrix.bundles }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: Cadence ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: true
