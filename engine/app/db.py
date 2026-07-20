@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     voice_profile_id TEXT,
     voice_name       TEXT,
     instrumental     INTEGER NOT NULL DEFAULT 0,
+    liked            INTEGER NOT NULL DEFAULT 0,
     created_at       REAL NOT NULL
 );
 """
@@ -72,11 +73,15 @@ def _connect() -> sqlite3.Connection:
 def init_db() -> None:
     with _connect() as conn:
         conn.executescript(_SCHEMA)
-        # Databases created before the gender column existed get it added here.
-        try:
-            conn.execute("ALTER TABLE voice_profiles ADD COLUMN gender TEXT NOT NULL DEFAULT ''")
-        except sqlite3.OperationalError:
-            pass
+        # Columns added after a database already existed get backfilled here.
+        for stmt in (
+            "ALTER TABLE voice_profiles ADD COLUMN gender TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE tracks ADD COLUMN liked INTEGER NOT NULL DEFAULT 0",
+        ):
+            try:
+                conn.execute(stmt)
+            except sqlite3.OperationalError:
+                pass
 
 
 # ---------- profiles ----------
@@ -221,6 +226,13 @@ def get_track(track_id: str) -> Optional[dict[str, Any]]:
 def delete_track(track_id: str) -> None:
     with _connect() as conn:
         conn.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
+
+
+def set_track_liked(track_id: str, liked: bool) -> Optional[dict[str, Any]]:
+    with _connect() as conn:
+        conn.execute("UPDATE tracks SET liked = ? WHERE id = ?", (1 if liked else 0, track_id))
+        row = conn.execute("SELECT * FROM tracks WHERE id = ?", (track_id,)).fetchone()
+        return dict(row) if row else None
 
 
 def _total_seconds(conn: sqlite3.Connection, profile_id: str) -> float:

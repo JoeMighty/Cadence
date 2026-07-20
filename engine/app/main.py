@@ -540,6 +540,18 @@ def delete_track(track_id: str) -> dict:
     return {"deleted": track_id}
 
 
+class LikeRequest(BaseModel):
+    liked: bool
+
+
+@app.put("/tracks/{track_id}/like")
+def like_track(track_id: str, req: LikeRequest) -> dict:
+    track = db.set_track_liked(track_id, req.liked)
+    if track is None:
+        raise HTTPException(404, "No such track")
+    return track
+
+
 @app.get("/tracks/{track_id}/audio")
 def track_audio(track_id: str) -> FileResponse:
     track = db.get_track(track_id)

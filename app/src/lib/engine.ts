@@ -128,6 +128,7 @@ export interface Track {
   voice_profile_id: string | null;
   voice_name: string | null;
   instrumental: number;
+  liked: number;
   created_at: number;
 }
 
@@ -179,6 +180,16 @@ export function trackExportUrl(trackId: string, fmt: "wav" | "mp3"): string {
 
 export async function deleteTrack(trackId: string): Promise<void> {
   await fetch(`${BASE}/tracks/${trackId}`, { method: "DELETE" });
+}
+
+export async function setTrackLiked(trackId: string, liked: boolean): Promise<Track> {
+  return json(
+    await fetch(`${BASE}/tracks/${trackId}/like`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ liked }),
+    }),
+  );
 }
 
 export async function repaintTrack(

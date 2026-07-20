@@ -3,6 +3,16 @@
 All notable changes to Cadence. Installers for every version are on
 [GitHub Releases](https://github.com/JoeMighty/Cadence/releases).
 
+## v0.1.10 — 19 Jul 2026
+
+- **A player that follows you**: playing a track opens a bar along the bottom that
+  keeps going as you move between Generate, Library, and Settings. Play/pause, skip
+  through the library as a queue, scrub the timeline, or close it.
+- **A Library worth returning to**: search across prompts, lyrics, and voice names;
+  **favorite** the ones you want to keep and filter down to just those; and **Remix**
+  any track to drop its prompt, lyrics, and voice back into Generate as a starting
+  point. Favorites are stored with the track, so they survive restarts.
+
 ## v0.1.9 — 18 Jul 2026
 
 - **Regenerate a section**: on a finished instrumental track, open "Regenerate a

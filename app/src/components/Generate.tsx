@@ -12,7 +12,9 @@ import {
   type Track,
   type VoiceProfile,
 } from "@/lib/engine";
+import { usePlayer } from "@/lib/player";
 import SetupGuide from "@/components/SetupGuide";
+import type { RemixRequest } from "@/components/AppShell";
 
 const STEPS_VOICE = ["Writing lyrics", "Generating music", "Converting to your voice"];
 const STEPS_INSTRUMENTAL = ["Writing lyrics", "Generating music"];
@@ -78,7 +80,13 @@ function stepIndex(detail: string): number {
   return 0;
 }
 
-export default function Generate({ goToVoice }: { goToVoice: () => void }) {
+export default function Generate({
+  goToVoice,
+  remix,
+}: {
+  goToVoice: () => void;
+  remix?: RemixRequest | null;
+}) {
   const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
   const [mode, setMode] = useState<"prompt" | "lyrics">("prompt");
   const [prompt, setPrompt] = useState("");
@@ -128,6 +136,24 @@ export default function Generate({ goToVoice }: { goToVoice: () => void }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // "Remix this" from the Library: seed the form from a past track.
+  useEffect(() => {
+    if (!remix) return;
+    const t = remix.track;
+    if (t.lyrics && !t.instrumental) {
+      setMode("lyrics");
+      setLyrics(t.lyrics);
+      setStyleText(t.caption || t.prompt);
+    } else {
+      setMode("prompt");
+      setPrompt(t.prompt);
+    }
+    setVoiceId(t.instrumental ? "instrumental" : t.voice_profile_id || "female");
+    setJob(null);
+    setJobId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remix?.n]);
 
   // Output preferences stick across sessions (kept on this machine only).
   useEffect(() => {
@@ -533,12 +559,14 @@ function Result({
   track: Track;
   onRepaint?: (trackId: string, start: number, end: number, part: string) => void;
 }) {
+  const player = usePlayer();
   const [dur, setDur] = useState(0);
   const [open, setOpen] = useState(false);
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(15);
   const [part, setPart] = useState("");
   const isInstrumental = track.instrumental === 1;
+  const isCurrent = player.current?.id === track.id;
 
   function onLoaded(e: React.SyntheticEvent<HTMLAudioElement>) {
     const d = Math.floor(e.currentTarget.duration || 0);
@@ -569,7 +597,22 @@ function Result({
         )}
       </div>
       {track.caption && <p className="mb-4 text-sm text-foreground-secondary">{track.caption}</p>}
-      <audio controls src={trackAudioUrl(track.id)} onLoadedMetadata={onLoaded} className="w-full" />
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => (isCurrent ? player.toggle() : player.play(track, [track]))}
+          className="inline-flex h-11 items-center gap-2 rounded-full bg-accent pl-4 pr-5 text-sm font-medium text-white"
+        >
+          {isCurrent && player.isPlaying ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z" /></svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          )}
+          {isCurrent && player.isPlaying ? "Pause" : "Play"}
+        </button>
+        <span className="font-mono text-xs text-foreground-secondary">plays in the bar below</span>
+      </div>
+      {/* hidden: loads only the duration, to bound the repaint range */}
+      <audio preload="metadata" src={trackAudioUrl(track.id)} onLoadedMetadata={onLoaded} className="hidden" />
       {track.lyrics && (
         <pre className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap border-t border-border pt-4 font-sans text-sm leading-relaxed text-foreground-secondary">
           {track.lyrics}

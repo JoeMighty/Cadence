@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { getHealth } from "@/lib/engine";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { getHealth, type Track } from "@/lib/engine";
+import { PlayerProvider, PlayerBar } from "@/lib/player";
 import Generate from "@/components/Generate";
 import Library from "@/components/Library";
 import Settings from "@/components/Settings";
@@ -9,6 +10,7 @@ import VoiceSetup from "@/components/VoiceSetup";
 
 type View = "generate" | "voice" | "library" | "settings";
 type EngineState = "checking" | "online" | "offline";
+export type RemixRequest = { track: Track; n: number };
 
 const NAV: { id: View; label: string; icon: ReactNode }[] = [
   { id: "generate", label: "Generate", icon: <WaveIcon /> },
@@ -20,6 +22,14 @@ const NAV: { id: View; label: string; icon: ReactNode }[] = [
 export default function AppShell() {
   const [view, setView] = useState<View>("generate");
   const [engine, setEngine] = useState<EngineState>("checking");
+  const [remix, setRemix] = useState<RemixRequest | null>(null);
+  const remixN = useRef(0);
+
+  function handleRemix(track: Track) {
+    remixN.current += 1;
+    setRemix({ track, n: remixN.current });
+    setView("generate");
+  }
 
   useEffect(() => {
     let alive = true;
@@ -36,7 +46,9 @@ export default function AppShell() {
   }, []);
 
   return (
-    <div className="flex h-screen">
+    <PlayerProvider>
+      <div className="flex h-screen flex-col">
+        <div className="flex min-h-0 flex-1">
       <aside className="flex w-56 flex-col border-r border-border bg-surface">
         <div className="flex items-center gap-2.5 px-5 py-5">
           <WaveMark />
@@ -76,12 +88,17 @@ export default function AppShell() {
       </aside>
 
       <main className="flex flex-1 flex-col overflow-y-auto">
-        {view === "generate" && <Generate goToVoice={() => setView("voice")} />}
+        {view === "generate" && <Generate goToVoice={() => setView("voice")} remix={remix} />}
         {view === "voice" && <VoiceSetup />}
-        {view === "library" && <Library goToGenerate={() => setView("generate")} />}
+        {view === "library" && (
+          <Library goToGenerate={() => setView("generate")} onRemix={handleRemix} />
+        )}
         {view === "settings" && <Settings />}
       </main>
-    </div>
+        </div>
+        <PlayerBar />
+      </div>
+    </PlayerProvider>
   );
 }
 
