@@ -19,7 +19,7 @@ esac
 uv run pyinstaller --onefile --name cadence-engine \
   --distpath dist_engine --workpath build_engine --specpath build_engine --noconfirm \
   --collect-all uvicorn --collect-all anthropic --collect-all keyring --copy-metadata keyring \
-  --hidden-import app.main "${extra_hidden[@]}" \
+  --hidden-import app.main ${extra_hidden[@]+"${extra_hidden[@]}"} \
   run_engine.py
 
 triple="$(rustc -vV | sed -n 's/^host: //p')"
