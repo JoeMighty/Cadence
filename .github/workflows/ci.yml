@@ -150,7 +150,9 @@ jobs:
 
       - name: Build engine sidecar
         shell: bash
-        run: bash scripts/build-sidecar.sh
+        run: |
+          set -o pipefail
+          bash scripts/build-sidecar.sh 2>&1 | tee "${RUNNER_TEMP}/sidecar.log"
 
       - name: Build app
         working-directory: app
@@ -166,9 +168,14 @@ jobs:
         run: |
           {
             echo "### Build failed on ${{ matrix.os }}"
-            echo '```'
-            tail -n 120 "${RUNNER_TEMP}/tauri-build.log" 2>/dev/null || echo "(no build log)"
-            echo '```'
+            for f in sidecar tauri-build; do
+              if [ -s "${RUNNER_TEMP}/$f.log" ]; then
+                echo "#### ${f}.log (tail)"
+                echo '```'
+                tail -n 120 "${RUNNER_TEMP}/$f.log"
+                echo '```'
+              fi
+            done
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: List produced bundles
