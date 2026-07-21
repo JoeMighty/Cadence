@@ -3,7 +3,7 @@
 All notable changes to Cadence. Installers for every version are on
 [GitHub Releases](https://github.com/JoeMighty/Cadence/releases).
 
-## Unreleased
+## v0.2.1 — 21 Jul 2026
 
 - **Autotune and smoothing, for songs sung in your own voice.** Both live under
   Advanced on the Generate screen. Autotune (off, subtle, strong) pulls the singing
