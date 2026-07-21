@@ -117,15 +117,15 @@
         </details>
         <details>
           <summary>How much recording does voice training need?</summary>
-          <div>Ten to fifteen minutes of clean speech, captured in short takes with a guided reading script inside the app. You review each take and re-record anything that isn't right before training starts.</div>
+          <div>Ten to fifteen minutes of clean speech, captured in short takes with a guided reading script inside the app. The script runs to 75 lines, enough to reach the target in a single pass without reading the same sentences over and over. You review each take and re-record anything that isn't right before training starts.</div>
         </details>
         <details>
           <summary>Where are my tracks saved?</summary>
-          <div>As WAV files under <code>Music\Cadence\output</code> by default, with an MP3 export option - or wherever you choose: set a &ldquo;Save to&rdquo; folder under <em>+&nbsp;Advanced</em> on the Generate screen, and optionally tick <em>Save stems separately</em> to get the vocals and instrumental as their own files. Tracks appear in the app's Library, but they're ordinary files - copy, move, or back them up like anything else on your disk.</div>
+          <div>Each song gets its own dated folder under <code>Music\Cadence\output</code>, named for when you made it, so they sort in the order you created them. Inside is <code>track.wav</code>, the finished song, alongside the working files it came from. There is an MP3 export option, and you can send songs anywhere you like: set a &ldquo;Save to&rdquo; folder under <em>+&nbsp;Advanced</em> on the Generate screen, and optionally tick <em>Save stems separately</em> to get the vocals and instrumental as their own files. Tracks appear in the app's Library, but they're ordinary files - copy, move, or back them up like anything else on your disk.</div>
         </details>
         <details>
           <summary>Is there a macOS or Linux version?</summary>
-          <div>Not yet - Windows is the focus while the core settles. Cross-platform builds (Apple Silicon and Linux CUDA) are Phase&nbsp;8 on the <a href="roadmap.html">roadmap</a>.</div>
+          <div>Yes, both ship with every release, and both are <strong>under testing</strong>. macOS gets a <code>.dmg</code> (Apple silicon only, not Intel) and Linux a <code>.deb</code> for Debian and Ubuntu. They are built and smoke-tested on their own operating systems, so the app and its engine start and run - but generating music on them is not verified yet: the models want an NVIDIA GPU, so Linux needs CUDA, and Apple silicon support is unconfirmed. Windows remains the tested path. Grab them from the <a href="setup.html">setup page</a>.</div>
         </details>
       </div>
     </section>
