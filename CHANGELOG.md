@@ -20,6 +20,11 @@ All notable changes to Cadence. Installers for every version are on
   Windows PowerShell setup script.
 - Continuous integration builds all three platforms and drafts a release on each
   version tag.
+- **The voice training script is now 75 lines, up from 12.** Reaching the ten
+  minutes of speech that unlocks training used to mean reading the same dozen
+  lines five times over, which is dull and teaches the model your bored voice.
+  The new lines cover statements, questions, counting, clipped fragments and
+  long sentences, so one pass through is enough.
 - The installer wears Cadence's own artwork now, and the app icon's mark is
   centred by its visual weight rather than its bounding box, so it no longer
   looks nudged to the right in the taskbar and Start menu.
