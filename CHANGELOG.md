@@ -20,6 +20,11 @@ All notable changes to Cadence. Installers for every version are on
   Windows PowerShell setup script.
 - Continuous integration builds all three platforms and drafts a release on each
   version tag.
+- **Voices can be renamed, and deleting one now really deletes it.** Click Rename to
+  edit the name in place. Delete asks before it acts, then clears the recordings and
+  the trained model along with the entry and tells you how much space came back.
+  Previously it removed only the database entry, so a deleted voice quietly kept its
+  recordings and its multi-gigabyte training folder forever.
 - **The voice training script is now 75 lines, up from 12.** Reaching the ten
   minutes of speech that unlocks training used to mean reading the same dozen
   lines five times over, which is dull and teaches the model your bored voice.

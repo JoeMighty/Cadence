@@ -6,6 +6,7 @@ import {
   deleteProfile,
   getProfile,
   listProfiles,
+  renameProfile,
   trainVoice,
   uploadTake,
   type VoiceProfile,
@@ -17,6 +18,12 @@ function fmt(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function bytes(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)} GB`;
+  if (n >= 1e6) return `${Math.round(n / 1e6)} MB`;
+  return `${Math.max(1, Math.round(n / 1e3))} KB`;
 }
 
 type Pending = { blob: Blob; seconds: number; url: string };
@@ -32,6 +39,7 @@ export default function VoiceSetup() {
   const [elapsed, setElapsed] = useState(0);
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const recorder = useRef<Recorder | null>(null);
@@ -151,9 +159,23 @@ export default function VoiceSetup() {
   }
 
   async function handleDelete(id: string) {
-    await deleteProfile(id);
-    const list = await refreshProfiles();
-    if (activeId === id) setActiveId(list[0]?.id ?? null);
+    try {
+      const { freed_bytes } = await deleteProfile(id);
+      const list = await refreshProfiles();
+      if (activeId === id) setActiveId(list[0]?.id ?? null);
+      if (freed_bytes > 0) setNotice(`Voice deleted. ${bytes(freed_bytes)} freed.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete that voice");
+    }
+  }
+
+  async function handleRename(id: string, name: string) {
+    try {
+      const updated = await renameProfile(id, name);
+      setProfiles((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not rename that voice");
+    }
   }
 
   return (
@@ -170,6 +192,12 @@ export default function VoiceSetup() {
           speech, training unlocks and every track will sing in this voice.
         </p>
       </header>
+
+      {notice && (
+        <div className="mb-6 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground-secondary">
+          {notice}
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 rounded-xl border border-error/30 bg-error/5 px-4 py-3 text-sm text-error">
@@ -212,7 +240,13 @@ export default function VoiceSetup() {
         <TrainingCard profile={active} />
       ) : (
         <>
-          <ProfilePanel profile={active} onTrain={handleTrain} busy={busy} onDelete={handleDelete} />
+          <ProfilePanel
+            profile={active}
+            onTrain={handleTrain}
+            busy={busy}
+            onDelete={handleDelete}
+            onRename={handleRename}
+          />
           <RecordingPanel
             scriptIndex={scriptIndex}
             onSkip={() => setScriptIndex((i) => (i + 1) % READING_SCRIPT.length)}
@@ -236,27 +270,100 @@ function ProfilePanel({
   profile,
   onTrain,
   onDelete,
+  onRename,
   busy,
 }: {
   profile: VoiceProfile;
   onTrain: () => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, name: string) => void;
   busy: boolean;
 }) {
   const pct = Math.min(100, (profile.total_seconds / profile.unlock_seconds) * 100);
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(profile.name);
+  const [confirming, setConfirming] = useState(false);
+
+  // Switching voices should never carry the other one's half-typed name over.
+  useEffect(() => {
+    setRenaming(false);
+    setConfirming(false);
+    setDraft(profile.name);
+  }, [profile.id, profile.name]);
+
+  // Deleting a voice throws away minutes of reading and an hour of training,
+  // so the confirm lapses rather than sitting there waiting to be mis-clicked.
+  useEffect(() => {
+    if (!confirming) return;
+    const id = setTimeout(() => setConfirming(false), 4000);
+    return () => clearTimeout(id);
+  }, [confirming]);
+
+  function commitRename() {
+    const name = draft.trim();
+    setRenaming(false);
+    if (!name || name === profile.name) {
+      setDraft(profile.name);
+      return;
+    }
+    onRename(profile.id, name);
+  }
+
   return (
     <div className="mb-6 rounded-2xl border border-border bg-surface p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">{profile.name}</h2>
-          <StatusBadge status={profile.status} />
+      <div className="flex items-center justify-between gap-4">
+        {renaming ? (
+          <input
+            autoFocus
+            value={draft}
+            maxLength={60}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") {
+                setDraft(profile.name);
+                setRenaming(false);
+              }
+            }}
+            aria-label="Voice name"
+            className="min-w-0 flex-1 rounded-lg border border-accent bg-background px-3 py-1 text-lg font-semibold outline-none"
+          />
+        ) : (
+          <div className="flex min-w-0 items-center gap-3">
+            <h2 className="truncate text-lg font-semibold">{profile.name}</h2>
+            <StatusBadge status={profile.status} />
+          </div>
+        )}
+
+        <div className="flex shrink-0 items-center gap-3">
+          {!renaming && (
+            <button
+              onClick={() => setRenaming(true)}
+              className="text-xs text-foreground-secondary hover:text-foreground"
+            >
+              Rename
+            </button>
+          )}
+          {confirming ? (
+            <button
+              onClick={() => {
+                setConfirming(false);
+                onDelete(profile.id);
+              }}
+              className="text-xs font-medium text-error"
+            >
+              Delete voice and recordings?
+            </button>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              className="text-xs text-foreground-secondary hover:text-error"
+            >
+              Delete
+            </button>
+          )}
         </div>
-        <button
-          onClick={() => onDelete(profile.id)}
-          className="text-xs text-foreground-secondary hover:text-error"
-        >
-          Delete
-        </button>
       </div>
 
       <div className="mt-4">

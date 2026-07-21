@@ -77,8 +77,19 @@ export async function createProfile(
   );
 }
 
-export async function deleteProfile(id: string): Promise<void> {
-  await fetch(`${BASE}/voice/profiles/${id}`, { method: "DELETE" });
+export async function renameProfile(id: string, name: string): Promise<VoiceProfile> {
+  return json(
+    await fetch(`${BASE}/voice/profiles/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+  );
+}
+
+/** Also removes the recordings and trained model, and reports what that freed. */
+export async function deleteProfile(id: string): Promise<{ freed_bytes: number }> {
+  return json(await fetch(`${BASE}/voice/profiles/${id}`, { method: "DELETE" }));
 }
 
 export async function uploadTake(

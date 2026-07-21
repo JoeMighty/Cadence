@@ -64,6 +64,41 @@ def remove_take(take_id: str) -> None:
     db.delete_take(take_id)
 
 
+def _dir_bytes(path: Path) -> int:
+    total = 0
+    for f in path.rglob("*"):
+        with contextlib.suppress(OSError):
+            if f.is_file():
+                total += f.stat().st_size
+    return total
+
+
+def delete_profile(profile_id: str) -> dict[str, Any]:
+    """Delete a voice: its database row, its recordings, and its training folder.
+
+    Dropping the row alone is nearly free but leaves the expensive part behind.
+    A trained voice keeps its takes under voice_data/<id> and everything Applio
+    wrote under logs/<id>, which together run to gigabytes, so both go as well.
+    Safe to call for an id whose row is already gone, which is how leftovers
+    from earlier deletes get cleaned up.
+    """
+    # ids are generated hex; anything else must never reach rmtree.
+    if not re.fullmatch(r"[0-9a-f]{12}", profile_id):
+        raise VoiceError("Not a valid voice id")
+
+    freed = 0
+    for path in (
+        settings.VOICE_DATA_DIR / profile_id,
+        settings.APPLIO_DIR / "logs" / profile_id,
+    ):
+        if path.is_dir():
+            freed += _dir_bytes(path)
+            shutil.rmtree(path, ignore_errors=True)
+
+    db.delete_profile(profile_id)
+    return {"deleted": profile_id, "freed_bytes": freed}
+
+
 async def _run_step(cmd: list[str], on_line: Callable[[str], None] | None = None) -> None:
     """Run an Applio CLI step in its venv, streaming stdout line by line."""
     proc = await asyncio.create_subprocess_exec(

@@ -245,10 +245,27 @@ def get_voice_profile(profile_id: str) -> dict:
     return _with_unlock(profile)
 
 
+class RenameProfileRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+@app.patch("/voice/profiles/{profile_id}")
+def rename_voice_profile(profile_id: str, req: RenameProfileRequest) -> dict:
+    if db.get_profile(profile_id) is None:
+        raise HTTPException(404, "No such voice profile")
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(422, "A voice needs a name.")
+    db.update_profile(profile_id, name=name)
+    return _with_unlock(db.get_profile(profile_id))
+
+
 @app.delete("/voice/profiles/{profile_id}")
 def delete_voice_profile(profile_id: str) -> dict:
-    db.delete_profile(profile_id)
-    return {"deleted": profile_id}
+    try:
+        return voice_service.delete_profile(profile_id)
+    except voice_service.VoiceError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @app.post("/voice/profiles/{profile_id}/takes")
