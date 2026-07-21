@@ -20,6 +20,9 @@ All notable changes to Cadence. Installers for every version are on
   Windows PowerShell setup script.
 - Continuous integration builds all three platforms and drafts a release on each
   version tag.
+- The installer wears Cadence's own artwork now, and the app icon's mark is
+  centred by its visual weight rather than its bounding box, so it no longer
+  looks nudged to the right in the taskbar and Start menu.
 - **Fixed:** in the installed app, making a song in your own voice failed with a
   "no such file or directory" error, and MP3 export failed the same way. The two
   helper scripts that run inside the Applio environment were missing from the
