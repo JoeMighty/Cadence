@@ -22,7 +22,11 @@ async def convert(params: dict[str, Any]) -> dict[str, Any]:
     """Run RVC inference: re-voice input_path with the model at pth_path.
 
     Required params: input_path, output_path, pth_path, index_path.
-    Optional: pitch (semitones), f0_method, index_rate, protect.
+    Optional: pitch (semitones), f0_method, index_rate, protect, and the
+    voice-shaping set: autotune, autotune_strength, clean_audio, clean_strength.
+
+    Applio checks the two strength values against a 0.1 grid and rejects
+    anything off it, so callers must keep to one decimal place.
     """
     python = settings.applio_python()
     if not python.exists():
@@ -48,6 +52,10 @@ async def convert(params: dict[str, Any]) -> dict[str, Any]:
         "--f0_method", str(params.get("f0_method", "rmvpe")),
         "--index_rate", str(params.get("index_rate", 0.3)),
         "--protect", str(params.get("protect", 0.33)),
+        "--f0_autotune", "True" if params.get("autotune") else "False",
+        "--f0_autotune_strength", str(round(float(params.get("autotune_strength", 1.0)), 1)),
+        "--clean_audio", "True" if params.get("clean_audio") else "False",
+        "--clean_strength", str(round(float(params.get("clean_strength", 0.7)), 1)),
         "--export_format", "WAV",
     ]
 

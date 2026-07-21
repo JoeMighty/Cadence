@@ -97,6 +97,8 @@ export default function Generate({
   const [lyrics, setLyrics] = useState("");
   const [outputDir, setOutputDir] = useState("");
   const [saveStems, setSaveStems] = useState(false);
+  const [autotune, setAutotune] = useState<"off" | "subtle" | "strong">("off");
+  const [smoothing, setSmoothing] = useState<"off" | "light" | "strong">("off");
   const [backendReady, setBackendReady] = useState(true);
   const [guideOpen, setGuideOpen] = useState(false);
   const [welcome, setWelcome] = useState(false);
@@ -250,6 +252,9 @@ export default function Generate({
         lyrics: mode === "lyrics" && !instrumental ? lyrics.trim() : undefined,
         output_dir: outputDir.trim() || undefined,
         save_stems: saveStems || undefined,
+        // Only meaningful when the vocal is actually converted.
+        autotune: instrumental || genericVoice ? undefined : autotune,
+        smoothing: instrumental || genericVoice ? undefined : smoothing,
       });
       setJobId(res.job_id);
     } catch (e) {
@@ -460,6 +465,42 @@ export default function Generate({
                   four-minute track. More sections, longer song.
                 </p>
               )}
+            </div>
+
+            <div>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-foreground-secondary">Autotune</label>
+                  <select
+                    value={autotune}
+                    onChange={(e) => setAutotune(e.target.value as typeof autotune)}
+                    disabled={running || instrumental || genericVoice}
+                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent disabled:opacity-50"
+                  >
+                    <option value="off">Off</option>
+                    <option value="subtle">Subtle</option>
+                    <option value="strong">Strong</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-foreground-secondary">Smoothing</label>
+                  <select
+                    value={smoothing}
+                    onChange={(e) => setSmoothing(e.target.value as typeof smoothing)}
+                    disabled={running || instrumental || genericVoice}
+                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent disabled:opacity-50"
+                  >
+                    <option value="off">Off</option>
+                    <option value="light">Light</option>
+                    <option value="strong">Strong</option>
+                  </select>
+                </div>
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-foreground-secondary">
+                {instrumental || genericVoice
+                  ? "These shape a vocal sung in your own trained voice, so they do nothing for an instrumental or a generic voice."
+                  : "Autotune pulls the singing towards the nearest note. Smoothing protects breath and consonants, which is usually what sounds raspy in a converted vocal. Both cost nothing extra to try."}
+              </p>
             </div>
 
             <div>

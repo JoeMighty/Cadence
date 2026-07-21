@@ -320,6 +320,38 @@ async def train_voice(profile_id: str, req: TrainRequest) -> dict:
 
 # --------------------------- compose ----------------------------
 
+# How the two friendly settings land on Applio's knobs. Both strengths must
+# stay on a 0.1 grid; Applio rejects anything else outright.
+_AUTOTUNE = {          # name: (on, strength)
+    "off": (False, 1.0),
+    "subtle": (True, 0.4),
+    "strong": (True, 1.0),
+}
+_SMOOTHING = {         # name: (protect, clean, clean strength)
+    "off": (0.33, False, 0.7),
+    "light": (0.45, True, 0.3),
+    "strong": (0.5, True, 0.7),
+}
+
+
+def _voice_shaping(autotune: str, smoothing: str) -> dict:
+    """Turn the two picker values into Applio inference parameters.
+
+    'protect' guards breath and voiceless consonants, which is what usually
+    reads as rasp when a converted vocal sounds gravelly; cleaning takes down
+    the noise RVC leaves behind.
+    """
+    on, strength = _AUTOTUNE[autotune]
+    protect, clean, clean_strength = _SMOOTHING[smoothing]
+    return {
+        "autotune": on,
+        "autotune_strength": strength,
+        "protect": protect,
+        "clean_audio": clean,
+        "clean_strength": clean_strength,
+    }
+
+
 class ComposeRequest(BaseModel):
     prompt: str = Field(min_length=1)
     voice_profile_id: Optional[str] = None
@@ -334,6 +366,9 @@ class ComposeRequest(BaseModel):
     # Sing with a generic voice in this register instead of a trained profile.
     # Ignored when a voice_profile_id is given (the profile's range wins).
     vocal_gender: Literal["", "male", "female"] = ""
+    # Shape the converted vocal. Only apply when singing through a profile.
+    autotune: Literal["off", "subtle", "strong"] = "off"
+    smoothing: Literal["off", "light", "strong"] = "off"
 
 
 @app.post("/compose")
@@ -441,6 +476,7 @@ async def compose(req: ComposeRequest) -> dict:
                         "output_path": str(converted),
                         "pth_path": profile["model_path"],
                         "index_path": profile["index_path"],
+                        **_voice_shaping(req.autotune, req.smoothing),
                     }
                 )
                 job.update(status=JobStatus.CONVERTING, detail="Remixing")
@@ -457,6 +493,7 @@ async def compose(req: ComposeRequest) -> dict:
                         "output_path": str(final),
                         "pth_path": profile["model_path"],
                         "index_path": profile["index_path"],
+                        **_voice_shaping(req.autotune, req.smoothing),
                     }
                 )
                 final_path = conv["audio_path"]

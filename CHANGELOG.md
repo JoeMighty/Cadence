@@ -3,6 +3,15 @@
 All notable changes to Cadence. Installers for every version are on
 [GitHub Releases](https://github.com/JoeMighty/Cadence/releases).
 
+## Unreleased
+
+- **Autotune and smoothing, for songs sung in your own voice.** Both live under
+  Advanced on the Generate screen. Autotune (off, subtle, strong) pulls the singing
+  towards the nearest note. Smoothing (off, light, strong) protects breath and
+  voiceless consonants and cleans up the noise the conversion leaves behind, which
+  is usually what makes a cloned vocal sound raspy. They are greyed out for
+  instrumentals and generic voices, where there is no conversion to shape.
+
 ## v0.2.0 — 21 Jul 2026
 
 - **Every song now gets its own dated folder.** A new track lands in something like

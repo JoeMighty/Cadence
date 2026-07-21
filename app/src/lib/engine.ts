@@ -161,6 +161,9 @@ export interface ComposeOptions {
   output_dir?: string;
   save_stems?: boolean;
   vocal_gender?: "male" | "female";
+  /** Shaping for the converted vocal; only meaningful with a voice profile. */
+  autotune?: "off" | "subtle" | "strong";
+  smoothing?: "off" | "light" | "strong";
 }
 
 export async function compose(opts: ComposeOptions): Promise<{ job_id: string }> {
