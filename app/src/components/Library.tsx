@@ -249,8 +249,8 @@ function TrackCard({
                 : "text-foreground-secondary hover:bg-background hover:text-foreground"
             }`}
           >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill={track.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 21s-7-4.35-9.5-8.5C1 9.5 2.5 6 6 6c2 0 3.2 1.2 4 2.3C10.8 7.2 12 6 14 6c3.5 0 5 3.5 3.5 6.5C19 16.65 12 21 12 21z" />
+            <svg width="17" height="17" viewBox="0 0 24 24" fill={track.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
             </svg>
           </button>
           <button

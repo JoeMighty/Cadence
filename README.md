@@ -15,7 +15,7 @@ minutes of your own speech — on your GPU, with no per-song cost.
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=plastic&logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/engine-FastAPI-009688?style=plastic&logo=fastapi&logoColor=white)
 ![CUDA](https://img.shields.io/badge/GPU-CUDA-76B900?style=plastic&logo=nvidia&logoColor=white)
-![Release](https://img.shields.io/github/v/release/JoeMighty/Cadence?style=plastic&color=5856D6)
+![Release](https://img.shields.io/github/v/release/JoeMighty/Cadence?include_prereleases&style=plastic&color=5856D6)
 
 [Website](https://joemighty.github.io/Cadence/) · [Roadmap](https://joemighty.github.io/Cadence/roadmap.html) · [Setup](https://joemighty.github.io/Cadence/setup.html) · [Support](https://joemighty.github.io/Cadence/support.html)
 
