@@ -51,18 +51,29 @@
     <section class="page-hero container">
       <span class="overline">Setup</span>
       <h1>Install Cadence</h1>
-      <p class="lede">Download the Windows installer, or run from source. Either way, full music generation needs the local backends set up - the installer ships the app and engine, not the multi-gigabyte models.</p>
+      <p class="lede">Download the installer for your system, or run from source. Either way, full music generation needs the local backends set up - the installer ships the app and engine, not the multi-gigabyte models.</p>
       <div class="hero-actions" style="margin-top: 26px;">
-        <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.10/Cadence_0.1.10_x64_en-US.msi">Download for Windows (.msi)</a>
-        <a class="btn btn-ghost" href="https://github.com/JoeMighty/Cadence/releases/tag/v0.1.10" target="_blank" rel="noopener">Release notes</a>
+        <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.2.0/Cadence_0.2.0_x64_en-US.msi">Download for Windows (.msi)</a>
+        <a class="btn btn-ghost" href="https://github.com/JoeMighty/Cadence/releases/tag/v0.2.0" target="_blank" rel="noopener">Release notes</a>
       </div>
-      <p class="muted" style="margin-top: 12px; font-size: var(--step--1);">Pre-release · v0.1.10 · 23&nbsp;MB · unsigned, so SmartScreen warns (More info → Run anyway). The app starts and stops its own engine.</p>
+      <p class="muted" style="margin-top: 12px; font-size: var(--step--1);">Pre-release · v0.2.0 · 24&nbsp;MB · unsigned, so SmartScreen warns (More info → Run anyway). The app starts and stops its own engine.</p>
+
+      <div class="callout reveal" style="margin-top: 26px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3v.01"/></svg>
+        <p>
+          <strong>macOS and Linux <span class="tag">under testing</span></strong><br>
+          <a href="https://github.com/JoeMighty/Cadence/releases/download/v0.2.0/Cadence_0.2.0_aarch64.dmg">Cadence_0.2.0_aarch64.dmg</a> (macOS, Apple silicon)
+          and <a href="https://github.com/JoeMighty/Cadence/releases/download/v0.2.0/Cadence_0.2.0_amd64.deb">Cadence_0.2.0_amd64.deb</a> (Linux, Debian and Ubuntu).
+          Both are built and smoke-tested on every release, so the app and its engine start and run. Making actual music on them is not verified yet:
+          the models want an NVIDIA GPU, so Linux needs CUDA, and Apple silicon support is unconfirmed. Windows is the tested path. Intel Macs are not covered by this build.
+        </p>
+      </div>
     </section>
 
     <section class="container" style="padding-bottom: 0;">
       <div class="callout reveal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3v.01"/></svg>
-        <p>What works today: the full loop - record and train a voice, generate a song from a prompt (or paste your own lyrics) in that voice, manage the provider, API keys, and GPU status in Settings, and browse, play, and export past tracks in the Library. Dark mode and the Windows installer have shipped; cross-platform builds are next on the <a href="roadmap.html">roadmap</a>.</p>
+        <p>What works today: the full loop - record and train a voice, generate a song from a prompt (or paste your own lyrics) in that voice, manage the provider, API keys, and GPU status in Settings, and browse, play, and export past tracks in the Library. Dark mode and the Windows installer have shipped, and macOS and Linux builds now ship with every release while they are under testing. See the <a href="roadmap.html">roadmap</a>.</p>
       </div>
     </section>
 
@@ -120,7 +131,7 @@
           <h3>Download and install</h3>
           <p>Grab the installer and run it. Because it isn't code-signed yet, Windows SmartScreen shows a blue warning - click <strong>More info</strong>, then <strong>Run anyway</strong>. It installs to <code>C:\Program&nbsp;Files\Cadence</code>.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.1.10/Cadence_0.1.10_x64_en-US.msi">Download for Windows (.msi)</a>
+            <a class="btn btn-primary" href="https://github.com/JoeMighty/Cadence/releases/download/v0.2.0/Cadence_0.2.0_x64_en-US.msi">Download for Windows (.msi)</a>
           </div>
         </div>
       </div>
