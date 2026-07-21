@@ -908,6 +908,12 @@ a.card:hover {
   background: var(--success-soft);
 }
 
+/* Committed to, but not started: the accent without the fill. */
+.tag.planned {
+  color: color-mix(in srgb, var(--accent) 85%, var(--text-2));
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 .tag.next {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
@@ -943,6 +949,117 @@ a.card:hover {
 
 .phase.active {
   border-left: 3px solid var(--accent);
+}
+
+/* Committed to but not started: the accent, hollow. Reads as a step on the
+   path without claiming the activity of the phase actually underway. */
+.phase.planned {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.phase.planned::before {
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Work still being weighed reads quieter than work that is committed to. */
+.phase.later {
+  border-left: 3px dashed color-mix(in srgb, var(--text-2) 40%, transparent);
+  /* Sits back into the page rather than on it. Mixing surface with bg looks
+     identical to surface in light mode, where the two are a few units apart;
+     dropping to bg outright reads in both themes. */
+  background: var(--bg);
+  box-shadow: none;
+}
+
+/* The spine runs down a gutter beside the cards, with a node per phase.
+   It shades from shipped green through in-progress accent to a muted grey,
+   so the eye reads the state of the project before any of the words. */
+.timeline {
+  padding-left: 34px;
+  gap: 18px;
+}
+
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 30px;
+  bottom: 30px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to bottom,
+    var(--success) 0%,
+    var(--accent) 26%,
+    color-mix(in srgb, var(--accent) 45%, var(--border)) 60%,
+    var(--border) 100%
+  );
+}
+
+.phase::before {
+  content: "";
+  position: absolute;
+  left: -34px;
+  top: 32px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.phase.done::before {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.phase.active::before {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 5px var(--accent-soft);
+}
+
+.phase.later::before {
+  background: var(--bg);
+  border-style: dashed;
+}
+
+.phase:hover {
+  box-shadow: var(--shadow-2);
+}
+
+.phase:hover::before {
+  transform: scale(1.15);
+}
+
+/* A phase's own heading gets room to breathe from its bullets. */
+.phase h3 {
+  font-size: var(--step-1);
+}
+
+@media (max-width: 680px) {
+  .timeline {
+    padding-left: 22px;
+  }
+  .timeline::before {
+    left: 5px;
+  }
+  .phase::before {
+    left: -22px;
+    top: 26px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase::before,
+  .phase:hover::before {
+    transition: none;
+    transform: none;
+  }
 }
 
 /* ---------- setup page ---------- */
