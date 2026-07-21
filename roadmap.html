@@ -79,16 +79,16 @@
 
         <article class="phase active reveal" style="--i:1">
           <div class="phase-meta">
-            <span class="phase-num">NEXT</span>
-            <span class="tag next">Next up</span>
+            <span class="phase-num">NOW</span>
+            <span class="tag next">In testing</span>
           </div>
           <div>
             <h3>macOS and Linux</h3>
-            <p>After Windows is solid, not before.</p>
+            <p>Builds ship for all three platforms. macOS and Linux are under testing.</p>
             <ul>
-              <li>Apple Silicon (MPS) backend and Linux CUDA profile</li>
-              <li>Cross-platform GPU detection and CI builds</li>
-              <li>A shell version of the model setup script (today's is PowerShell only)</li>
+              <li>Every release includes a .dmg (macOS), a .deb (Linux), and the .msi (Windows), each built and smoke-tested per operating system in CI</li>
+              <li>A shell setup-backends.sh installs the AI backends on macOS and Linux</li>
+              <li>Real generation on those platforms is still being verified: Linux needs an NVIDIA GPU with CUDA, and Apple Silicon support is unconfirmed. Windows stays the fully tested path</li>
             </ul>
           </div>
         </article>

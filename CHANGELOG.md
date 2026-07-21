@@ -3,6 +3,19 @@
 All notable changes to Cadence. Installers for every version are on
 [GitHub Releases](https://github.com/JoeMighty/Cadence/releases).
 
+## v0.2.0 — 19 Jul 2026
+
+- **macOS and Linux join Windows.** Every release now ships a `.dmg` (macOS), a
+  `.deb` (Linux), and the `.msi` (Windows), each built and smoke-tested on its own
+  operating system in CI. **macOS and Linux are under testing** — the app and its
+  engine run, but real music generation isn't verified there yet: the models want an
+  NVIDIA GPU (so Linux needs CUDA), and Apple Silicon support is unconfirmed. Windows
+  stays the fully tested path.
+- **`setup-backends.sh`** installs the AI backends on macOS and Linux, mirroring the
+  Windows PowerShell setup script.
+- Continuous integration builds all three platforms and drafts a release on each
+  version tag.
+
 ## v0.1.10 — 19 Jul 2026
 
 - **A player that follows you**: playing a track opens a bar along the bottom that
