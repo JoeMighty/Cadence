@@ -93,9 +93,12 @@ async def ensure_running(progress=None) -> None:
     raise AceStepError("Timed out waiting for the ACE-Step server to become ready.")
 
 
-async def generate(params: dict[str, Any], progress=None) -> dict[str, Any]:
+async def generate(
+    params: dict[str, Any], progress=None, out_path: Path | None = None
+) -> dict[str, Any]:
     """Submit a text2music task, poll to completion, download the audio.
 
+    Lands on out_path when given, else OUTPUT_DIR/<task id>.wav.
     Returns {"audio_path": ..., "metas": {...}, "seed": ...}.
     """
     await ensure_running(progress)
@@ -151,7 +154,7 @@ async def generate(params: dict[str, Any], progress=None) -> dict[str, Any]:
         seed = first.get("seed_value", "")
         break
 
-    out = settings.OUTPUT_DIR / f"{task_id}.wav"
+    out = out_path or settings.OUTPUT_DIR / f"{task_id}.wav"
     out.parent.mkdir(parents=True, exist_ok=True)
     full_url = settings.ACESTEP_URL + audio_url if audio_url.startswith("/") else audio_url
 

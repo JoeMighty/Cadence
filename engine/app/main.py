@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -141,6 +142,22 @@ async def _run_voice_job(job: Job) -> None:
         )
         job.result = await applio_service.convert(job.params)
     job.update(status=JobStatus.DONE, detail="Done")
+
+
+def _new_run_dir(base: Path) -> Path:
+    """A dated folder holding everything one generation produced.
+
+    Named for when it was made, so the folders sort in the order you made them.
+    A second suffix keeps two songs started in the same second apart.
+    """
+    stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    run = base / stamp
+    n = 2
+    while run.exists():
+        run = base / f"{stamp}-{n}"
+        n += 1
+    run.mkdir(parents=True)
+    return run
 
 
 @app.post("/generate")
@@ -356,9 +373,15 @@ async def compose(req: ComposeRequest) -> dict:
         lyrics = user_lyrics or structured["lyrics"]
 
         job.update(status=JobStatus.GENERATING, detail="Generating music")
+        # Everything this song produces stays together in one dated folder.
+        run_dir = _new_run_dir(out_dir)
+        # When a voice is involved this gets re-sung into track.wav; without
+        # one it already is the finished track, so generate straight to it.
+        converting = not req.instrumental and profile is not None
+        raw = run_dir / ("music.wav" if converting else "track.wav")
         if settings.MOCK:
-            music_path = str(settings.OUTPUT_DIR / f"track-music-{job.id}.wav")
-            mock_audio.write_mock_track(Path(music_path), seconds=req.duration or 15)
+            music_path = str(raw)
+            mock_audio.write_mock_track(raw, seconds=req.duration or 15)
         else:
             gen = await acestep_service.generate(
                 {
@@ -372,6 +395,7 @@ async def compose(req: ComposeRequest) -> dict:
                     "audio_format": "wav",
                 },
                 progress=lambda m: job.update(detail=m),
+                out_path=raw,
             )
             music_path = gen["audio_path"]
 
@@ -380,8 +404,8 @@ async def compose(req: ComposeRequest) -> dict:
         # Stems produced along the way, reused if the user asked to keep them.
         stem_vocal: Optional[Path] = None
         stem_instrumental: Optional[Path] = None
-        if not req.instrumental and profile is not None:
-            final = out_dir / f"track-{job.id}.wav"
+        if converting:
+            final = run_dir / "track.wav"
             if settings.MOCK:
                 job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
                 mock_audio.write_mock_conversion(Path(music_path), final)
@@ -390,10 +414,10 @@ async def compose(req: ComposeRequest) -> dict:
                 # Re-voice only the isolated vocal, then remix with the instrumental.
                 job.update(status=JobStatus.CONVERTING, detail="Separating vocals")
                 vocal, instrumental = await stems.separate(
-                    Path(music_path), settings.OUTPUT_DIR / f"stems-{job.id}"
+                    Path(music_path), run_dir / "stems"
                 )
                 job.update(status=JobStatus.CONVERTING, detail="Converting to your voice")
-                converted = settings.OUTPUT_DIR / f"vocal-{job.id}.wav"
+                converted = run_dir / "vocal.wav"
                 await applio_service.convert(
                     {
                         "input_path": str(vocal),
@@ -421,22 +445,18 @@ async def compose(req: ComposeRequest) -> dict:
                 final_path = conv["audio_path"]
             voice_name = profile["name"]
 
-        # Deliver into the chosen folder, and keep the stems if asked.
-        if req.output_dir.strip() and Path(final_path).parent != out_dir:
-            delivered = out_dir / f"track-{job.id}.wav"
-            shutil.copyfile(final_path, delivered)
-            final_path = str(delivered)
+        # Keep the stems next to the track they came from, if asked.
         if req.save_stems:
             job.update(detail="Separating stems")
-            v_out = out_dir / f"track-{job.id}.vocals.wav"
-            i_out = out_dir / f"track-{job.id}.instrumental.wav"
+            v_out = run_dir / "track.vocals.wav"
+            i_out = run_dir / "track.instrumental.wav"
             if settings.MOCK:
                 mock_audio.write_mock_track(v_out, seconds=req.duration or 15)
                 mock_audio.write_mock_track(i_out, seconds=req.duration or 15)
             else:
                 if stem_vocal is None or stem_instrumental is None:
                     stem_vocal, stem_instrumental = await stems.separate(
-                        Path(music_path), settings.OUTPUT_DIR / f"stems-{job.id}"
+                        Path(music_path), run_dir / "stems"
                     )
                 shutil.copyfile(stem_vocal, v_out)
                 shutil.copyfile(stem_instrumental, i_out)
@@ -486,8 +506,8 @@ async def repaint_track(track_id: str, req: RepaintRequest) -> dict:
 
     async def runner(job: Job) -> None:
         job.update(status=JobStatus.GENERATING, detail="Regenerating the section")
+        out = _new_run_dir(settings.OUTPUT_DIR) / "track.wav"
         if settings.MOCK:
-            out = settings.OUTPUT_DIR / f"repaint-{job.id}.wav"
             mock_audio.write_mock_track(out, seconds=max(req.end, 15))
             audio_path = str(out)
         else:
@@ -505,6 +525,7 @@ async def repaint_track(track_id: str, req: RepaintRequest) -> dict:
                     "audio_format": "wav",
                 },
                 progress=lambda m: job.update(detail=m),
+                out_path=out,
             )
             audio_path = gen["audio_path"]
 

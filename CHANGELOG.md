@@ -5,6 +5,11 @@ All notable changes to Cadence. Installers for every version are on
 
 ## v0.2.0 — 21 Jul 2026
 
+- **Every song now gets its own dated folder.** A new track lands in something like
+  `output/2026-07-21_15-32-01/` with `track.wav` inside, next to the pre-conversion
+  `music.wav`, the isolated `vocal.wav`, and any stems you asked to keep. The folders
+  sort in the order you made them. Tracks you already have stay exactly where they
+  are and keep playing.
 - **macOS and Linux join Windows.** Every release now ships a `.dmg` (macOS), a
   `.deb` (Linux), and the `.msi` (Windows), each built and smoke-tested on its own
   operating system in CI. **macOS and Linux are under testing** — the app and its
