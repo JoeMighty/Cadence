@@ -10,15 +10,22 @@ cd "$here/../engine"
 # Windows needs the pywin32 helpers keyring uses for the Credential Manager;
 # macOS/Linux use their own keyring backends and must not import pywin32.
 extra_hidden=()
+# --add-data's separator is ';' on Windows and ':' everywhere else.
+sep=":"
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
     extra_hidden=(--hidden-import win32ctypes.pywin32 --hidden-import win32timezone)
+    sep=";"
     ;;
 esac
 
+# The *_helper.py scripts run under the Applio interpreter, not this one, so they
+# must ship as real files next to the frozen app package rather than as bytecode.
+# --add-data sources resolve relative to --specpath, hence the leading '../'.
 uv run pyinstaller --onefile --name cadence-engine \
   --distpath dist_engine --workpath build_engine --specpath build_engine --noconfirm \
   --collect-all uvicorn --collect-all anthropic --collect-all keyring --copy-metadata keyring \
+  --add-data "../app/remix_helper.py${sep}app" --add-data "../app/mp3_helper.py${sep}app" \
   --hidden-import app.main ${extra_hidden[@]+"${extra_hidden[@]}"} \
   run_engine.py
 

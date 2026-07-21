@@ -3,7 +3,7 @@
 All notable changes to Cadence. Installers for every version are on
 [GitHub Releases](https://github.com/JoeMighty/Cadence/releases).
 
-## v0.2.0 — 19 Jul 2026
+## v0.2.0 — 21 Jul 2026
 
 - **macOS and Linux join Windows.** Every release now ships a `.dmg` (macOS), a
   `.deb` (Linux), and the `.msi` (Windows), each built and smoke-tested on its own
@@ -15,6 +15,10 @@ All notable changes to Cadence. Installers for every version are on
   Windows PowerShell setup script.
 - Continuous integration builds all three platforms and drafts a release on each
   version tag.
+- **Fixed:** in the installed app, making a song in your own voice failed with a
+  "no such file or directory" error, and MP3 export failed the same way. The two
+  helper scripts that run inside the Applio environment were missing from the
+  packaged engine, so they only worked when running from source.
 
 ## v0.1.10 — 19 Jul 2026
 
