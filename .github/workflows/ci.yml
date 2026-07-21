@@ -162,21 +162,19 @@ jobs:
           npm run tauri build -- --bundles ${{ matrix.bundles }} 2>&1 \
             | tee "${RUNNER_TEMP}/tauri-build.log"
 
-      - name: Build diagnostics on failure
+      - name: Surface failure logs
         if: failure()
         shell: bash
         run: |
-          {
-            echo "### Build failed on ${{ matrix.os }}"
-            for f in sidecar tauri-build; do
-              if [ -s "${RUNNER_TEMP}/$f.log" ]; then
-                echo "#### ${f}.log (tail)"
-                echo '```'
-                tail -n 120 "${RUNNER_TEMP}/$f.log"
-                echo '```'
-              fi
+          for f in sidecar tauri-build; do
+            [ -s "${RUNNER_TEMP}/$f.log" ] || continue
+            echo "===== ${f}.log (tail) ====="
+            tail -n 60 "${RUNNER_TEMP}/$f.log"
+            # Annotations render on the run page without signing in, unlike logs.
+            tail -n 15 "${RUNNER_TEMP}/$f.log" | while IFS= read -r line; do
+              [ -n "$line" ] && echo "::error::${f}: ${line}"
             done
-          } >> "$GITHUB_STEP_SUMMARY"
+          done
 
       - name: List produced bundles
         if: always()
