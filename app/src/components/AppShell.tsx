@@ -105,7 +105,7 @@ export default function AppShell() {
 function WaveMark({ large = false }: { large?: boolean }) {
   const size = large ? 48 : 24;
   return (
-    <svg width={size} height={size} viewBox="-2 -2 36 36" className="text-accent" aria-hidden="true">
+    <svg width={size} height={size} viewBox="-8.17 -2 36 36" className="text-accent" aria-hidden="true">
       <g stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none">
         <line x1="18.02" y1="23.53" x2="19.26" y2="28.17" />
         <line x1="14.02" y1="21.45" x2="11.01" y2="29.72" />
