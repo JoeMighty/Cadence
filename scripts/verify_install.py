@@ -297,13 +297,31 @@ def test_download_errors_are_described_honestly() -> None:
         # A local disk problem isn't the network's fault either.
         blocker = d / "blocker"
         blocker.write_text("a file where a folder should be")
+
+        def save_under_a_file() -> None:
+            try:
+                installer._download(f"{base}/real.bin", blocker / "x.bin", new_progress(), "real")
+            except installer.InstallError as exc:
+                assert "internet" not in str(exc), "a disk error was blamed on the internet: " + str(exc)
+                assert "Couldn't save" in str(exc), str(exc)
+            else:
+                raise AssertionError("writing under a file didn't fail")
+
+        save_under_a_file()
+
+        # Tidying up the half-written file mustn't hide that error. Unlinking a path
+        # under a file raises NotADirectoryError on macOS and Linux (Windows just says
+        # "not found"), and missing_ok doesn't cover it, so force that on every OS.
+        real_unlink = Path.unlink
+
+        def unlink_like_posix(self, *args, **kwargs):
+            raise NotADirectoryError(f"Not a directory: {self}")
+
+        Path.unlink = unlink_like_posix
         try:
-            installer._download(f"{base}/real.bin", blocker / "x.bin", new_progress(), "real")
-        except installer.InstallError as exc:
-            assert "internet" not in str(exc), "a disk error was blamed on the internet: " + str(exc)
-            assert "Couldn't save" in str(exc), str(exc)
-        else:
-            raise AssertionError("writing under a file didn't fail")
+            save_under_a_file()
+        finally:
+            Path.unlink = real_unlink
 
 
 def test_extract_one_from_zip_and_tar() -> None:

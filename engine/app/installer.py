@@ -265,6 +265,12 @@ def _ssl_context() -> ssl.SSLContext:
     return ctx
 
 
+def _discard(path: Path) -> None:
+    """Delete a half-written file if we can; failing to tidy up mustn't hide why the download failed."""
+    with contextlib.suppress(OSError):
+        path.unlink()
+
+
 def _download(url: str, dest: Path, p: Progress, label: str, sha256: Optional[str] = None) -> None:
     """Fetch url to dest through a .part file, checking its hash when one is known."""
     part = dest.with_suffix(dest.suffix + ".part")
@@ -289,7 +295,7 @@ def _download(url: str, dest: Path, p: Progress, label: str, sha256: Optional[st
                     of = f" of {total / 1e6:.0f} MB" if total else ""
                     p.live(f"Downloading {label}: {done / 1e6:.0f} MB{of}")
             if sha256 and digest.hexdigest() != sha256:
-                part.unlink(missing_ok=True)
+                _discard(part)
                 raise InstallError(
                     f"The download of {label} didn't match its published checksum, so Cadence "
                     "won't run it. Try again; if it keeps happening, your network may be altering downloads."
@@ -299,11 +305,11 @@ def _download(url: str, dest: Path, p: Progress, label: str, sha256: Optional[st
             return
         except (InstallCancelled, InstallError):
             p.bytes = None
-            part.unlink(missing_ok=True)
+            _discard(part)
             raise
         except urllib.error.HTTPError as exc:
             p.bytes = None
-            part.unlink(missing_ok=True)
+            _discard(part)
             if 400 <= exc.code < 500:  # the pinned URL is wrong; trying again won't change that
                 raise InstallError(f"Couldn't download {label}: the server answered {exc.code} {exc.reason} for {url}") from exc
             last = exc
@@ -317,10 +323,10 @@ def _download(url: str, dest: Path, p: Progress, label: str, sha256: Optional[st
                 time.sleep(2 * attempt)
         except OSError as exc:  # our own disk (full, read-only, bad path), not the network
             p.bytes = None
-            part.unlink(missing_ok=True)
+            _discard(part)
             raise InstallError(f"Couldn't save {label} to {dest.parent}: {exc}") from exc
     p.bytes = None
-    part.unlink(missing_ok=True)
+    _discard(part)
     raise InstallError(
         f"Couldn't download {label}. Check your internet connection and try again.\n({last})"
     )
