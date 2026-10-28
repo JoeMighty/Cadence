@@ -21,13 +21,14 @@ class JobStatus(str, Enum):
     QUEUED = "queued"
     GENERATING = "generating"
     CONVERTING = "converting"
+    INSTALLING = "installing"
     DONE = "done"
     ERROR = "error"
 
 
 @dataclass
 class Job:
-    kind: str  # "music" or "voice"
+    kind: str  # "music", "voice", "compose", "install", ...
     params: dict[str, Any]
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     status: JobStatus = JobStatus.QUEUED
@@ -36,6 +37,11 @@ class Job:
     error: Optional[str] = None
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
+    # Live, structured progress for jobs with steps (installs). Called afresh on
+    # every poll, so it never needs publishing from the worker.
+    progress_fn: Optional[Callable[[], dict[str, Any]]] = None
+    # Asked-for cancellation; the runner decides how to stop (installs do).
+    cancel_requested: bool = False
 
     def update(self, status: JobStatus | None = None, detail: str | None = None) -> None:
         if status is not None:
@@ -52,6 +58,7 @@ class Job:
             "detail": self.detail,
             "result": self.result,
             "error": self.error,
+            "progress": self.progress_fn() if self.progress_fn else None,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }

@@ -141,6 +141,10 @@ else
 fi
 info "Installing Demucs (vocal separation) into the Applio environment"
 ( cd "$applio_dir" && uv pip install --python "$applio_py" demucs )
+# Applio never fetches these itself: the pitch models and pretrained voices load
+# from fixed paths, so voice training and conversion fail without them.
+info "Downloading Applio's voice assets (pitch models, pretrained voices) - about 1.2 GB"
+( cd "$applio_dir" && "$applio_py" core.py prerequisites --pretraineds_hifigan True --models True --exe True )
 ok "Applio + Demucs ready"
 
 echo

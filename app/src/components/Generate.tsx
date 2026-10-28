@@ -100,6 +100,7 @@ export default function Generate({
   const [autotune, setAutotune] = useState<"off" | "subtle" | "strong">("off");
   const [smoothing, setSmoothing] = useState<"off" | "light" | "strong">("off");
   const [backendReady, setBackendReady] = useState(true);
+  const [installing, setInstalling] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [welcome, setWelcome] = useState(false);
   const [repainting, setRepainting] = useState(false);
@@ -182,6 +183,14 @@ export default function Generate({
       try {
         const health = await getHealth();
         if (!alive) return;
+        setInstalling(health.installing);
+        // Mid-install the backend looks present before it's usable (the venv
+        // appears long before the models do), so don't call it ready or welcome
+        // the user yet; that happens when the install finishes.
+        if (health.installing) {
+          setBackendReady(false);
+          return;
+        }
         if (health.mock || health.acestep_installed) {
           missesRef.current = 0;
           setBackendReady(true);
@@ -292,16 +301,20 @@ export default function Generate({
       {!backendReady && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
           <div>
-            <p className="font-medium">One more step before you can generate</p>
+            <p className="font-medium">
+              {installing ? "Installing the AI models…" : "One more step before you can generate"}
+            </p>
             <p className="mt-1 leading-relaxed text-foreground-secondary">
-              The AI models aren&apos;t installed yet — a one-time setup puts them in place.
+              {installing
+                ? "This carries on in the background. Open the progress to watch it."
+                : "The AI models aren't installed yet. Cadence can download and set them up for you."}
             </p>
           </div>
           <button
             onClick={() => setGuideOpen(true)}
             className="h-9 shrink-0 rounded-lg bg-accent px-4 text-sm font-medium text-white"
           >
-            See what&apos;s missing
+            {installing ? "Show progress" : "Set up now"}
           </button>
         </div>
       )}

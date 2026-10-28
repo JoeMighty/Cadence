@@ -31,6 +31,7 @@ from . import (
     applio_service,
     db,
     errorlog,
+    installer,
     keystore,
     mock_audio,
     settings,
@@ -83,6 +84,8 @@ def health() -> dict:
         "acestep_installed": settings.acestep_python().exists(),
         "acestep_running": False if settings.MOCK else acestep_service.is_healthy(),
         "applio_installed": settings.applio_python().exists(),
+        "acestep_models": installer.acestep_models_present(),
+        "installing": installer.active_job() is not None,
         "data_root": str(settings.DATA_ROOT),
         "output_dir": str(settings.OUTPUT_DIR),
         "acestep_dir": str(settings.ACESTEP_DIR),
@@ -749,6 +752,32 @@ def system() -> dict:
             "uv": shutil.which("uv") is not None,
         },
     }
+
+
+# ---------------------------- backend install ----------------------------
+
+
+@app.get("/setup/install")
+def setup_install_latest() -> Optional[dict]:
+    """The most recent install job (running or finished), or null if none ran yet."""
+    job = installer.latest_job()
+    return job.to_dict() if job else None
+
+
+@app.post("/setup/install")
+async def setup_install_start() -> dict:
+    """Start installing the AI backends; if one is already running, join it instead."""
+    job = installer.active_job() or queue.submit(Job(kind=installer.KIND, params={}), installer.run_install)
+    return {"job_id": job.id}
+
+
+@app.post("/setup/install/cancel")
+def setup_install_cancel() -> dict:
+    job = installer.active_job()
+    if job is None:
+        raise HTTPException(404, "Nothing is installing right now.")
+    installer.request_cancel(job)
+    return {"ok": True}
 
 
 @app.on_event("shutdown")

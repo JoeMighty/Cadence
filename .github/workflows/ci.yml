@@ -103,6 +103,12 @@ jobs:
           curl -sf http://127.0.0.1:8000/tracks | grep -q '"liked"' || fail "track missing liked field"
           echo "smoke OK on ${{ matrix.os }}"
 
+      # The in-app installer: its helpers, plus a simulated install (success,
+      # joining a running one, cancel, failure). No GPU and no 18 GB download.
+      - name: Installer checks
+        working-directory: engine
+        run: uv run python ../scripts/verify_install.py
+
   # --- App: build the Tauri bundle (+ draft release on a tag) ----------------
   build:
     name: Build ${{ matrix.os }}

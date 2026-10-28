@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import subprocess
 import urllib.error
 import urllib.parse
@@ -50,7 +51,12 @@ def is_healthy() -> bool:
         return False
 
 
-def _spawn() -> None:
+def owns_server() -> bool:
+    """True if the running music server is one this engine started."""
+    return _process is not None and _process.poll() is None
+
+
+def _spawn(preload_models: bool = False) -> None:
     global _process
     if _process is not None and _process.poll() is None:
         return
@@ -59,24 +65,45 @@ def _spawn() -> None:
         raise AceStepError(
             f"The music model (ACE-Step) isn't installed yet. {settings.setup_hint()}"
         )
-    _process = subprocess.Popen(
-        [str(python), "-m", "acestep.api_server", "--port", str(settings.ACESTEP_PORT)],
-        cwd=str(settings.ACESTEP_DIR),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
-    )
+    env = os.environ.copy()
+    if preload_models:
+        # By default the server answers /health at once and only loads (so only
+        # downloads) its models on the first request. This makes startup do it
+        # instead, so the server answers only once the models are really there.
+        env["ACESTEP_NO_INIT"] = "false"
+    settings.LOG_DIR.mkdir(parents=True, exist_ok=True)
+    with open(settings.ACESTEP_LOG_PATH, "wb") as log:
+        # The child keeps its own handle, so closing ours straight after is fine.
+        _process = subprocess.Popen(
+            [str(python), "-m", "acestep.api_server", "--port", str(settings.ACESTEP_PORT)],
+            cwd=str(settings.ACESTEP_DIR),
+            env=env,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
+        )
 
 
-async def ensure_running(progress=None) -> None:
+def server_log_tail(lines: int = 12) -> str:
+    """The last lines the music server printed, or '' if there's nothing to show."""
+    try:
+        text = settings.ACESTEP_LOG_PATH.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    return "\n".join(text.strip().splitlines()[-lines:])
+
+
+async def ensure_running(progress=None, preload_models: bool = False) -> None:
     """Start the ACE-Step server if needed and wait until it reports healthy.
 
-    First-ever launch also downloads model weights (~10 GB), so the wait
-    is generous and reports what is happening through `progress`.
+    With preload_models, startup downloads and loads the models (several GB the
+    first time), so the wait is generous and reports what is happening through
+    `progress`. Without it the server is healthy in seconds and downloads on the
+    first request instead.
     """
     if is_healthy():
         return
-    _spawn()
+    _spawn(preload_models)
     waited = 0
     step = 5
     while waited < settings.ACESTEP_READY_TIMEOUT:
@@ -85,8 +112,10 @@ async def ensure_running(progress=None) -> None:
         if is_healthy():
             return
         if _process is not None and _process.poll() is not None:
+            tail = server_log_tail()
             raise AceStepError(
                 f"ACE-Step server exited with code {_process.returncode} during startup."
+                + (f"\n{tail}" if tail else "")
             )
         if progress is not None:
             progress(f"Starting music model server ({waited}s)")

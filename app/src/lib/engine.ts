@@ -46,6 +46,10 @@ export interface Health {
   acestep_installed: boolean;
   acestep_running: boolean;
   applio_installed: boolean;
+  /** The music model's weights are on disk (the biggest download). */
+  acestep_models: boolean;
+  /** An install is queued or running. */
+  installing: boolean;
   data_root: string;
   output_dir: string;
   acestep_dir: string;
@@ -126,7 +130,7 @@ export async function trainVoice(id: string, epochs?: number): Promise<{ job_id:
 
 // ---------- compose / tracks ----------
 
-export type JobStatus = "queued" | "generating" | "converting" | "done" | "error";
+export type JobStatus = "queued" | "generating" | "converting" | "installing" | "done" | "error";
 
 export interface Track {
   id: string;
@@ -143,6 +147,28 @@ export interface Track {
   created_at: number;
 }
 
+export type InstallStepState = "pending" | "running" | "done" | "error";
+
+export interface InstallStep {
+  id: string;
+  label: string;
+  state: InstallStepState;
+  note: string;
+}
+
+/** Live detail for an install job; other kinds of job have none. */
+export interface InstallProgress {
+  steps: InstallStep[];
+  /** What's happening right now: the last output line or a download counter. */
+  line: string;
+  log: string[];
+  bytes: { done: number; total: number | null } | null;
+  /** Epoch seconds. */
+  started_at: number;
+  finished_at: number | null;
+  cancelled: boolean;
+}
+
 export interface Job {
   id: string;
   kind: string;
@@ -150,6 +176,7 @@ export interface Job {
   detail: string;
   result: { track?: Track } | null;
   error: string | null;
+  progress?: InstallProgress | null;
 }
 
 export interface ComposeOptions {
@@ -178,6 +205,20 @@ export async function compose(opts: ComposeOptions): Promise<{ job_id: string }>
 
 export async function getJob(jobId: string): Promise<Job> {
   return json(await fetch(`${BASE}/status/${jobId}`));
+}
+
+/** The most recent install (running or finished), or null if none has run. */
+export async function getInstall(): Promise<Job | null> {
+  return json(await fetch(`${BASE}/setup/install`));
+}
+
+/** Start installing the AI backends; joins the one already running if there is one. */
+export async function startInstall(): Promise<{ job_id: string }> {
+  return json(await fetch(`${BASE}/setup/install`, { method: "POST" }));
+}
+
+export async function cancelInstall(): Promise<void> {
+  await json(await fetch(`${BASE}/setup/install/cancel`, { method: "POST" }));
 }
 
 export async function listTracks(): Promise<Track[]> {

@@ -44,6 +44,11 @@ else:
     DATA_ROOT = ENGINE_ROOT
     VENDOR_ROOT = ENGINE_ROOT / "vendor"
 
+# Where the in-app installer keeps uv, its package cache and the Python it
+# downloads. Deliberately not uv's defaults, which live in AppData: see
+# _frozen_data_root for why a spawned sidecar must stay out of there.
+TOOLS_DIR = Path(os.getenv("CADENCE_TOOLS_DIR", DATA_ROOT / "tools"))
+
 # Mock mode: exercise the full job pipeline without GPU models.
 MOCK = os.getenv("CADENCE_MOCK", "0") == "1"
 
@@ -57,6 +62,9 @@ VOICE_DATA_DIR = Path(os.getenv("CADENCE_VOICE_DATA_DIR", DATA_ROOT / "voice_dat
 # On-disk error log the user can read and attach to a bug report (local only).
 LOG_DIR = Path(os.getenv("CADENCE_LOG_DIR", DATA_ROOT / "logs"))
 LOG_PATH = LOG_DIR / "errors.log"
+# The music server's own output, rewritten on each start. It's the only place a
+# failed first-run model download explains itself.
+ACESTEP_LOG_PATH = LOG_DIR / "acestep-server.log"
 
 # Clean speech required before voice training unlocks (seconds).
 VOICE_UNLOCK_SECONDS = int(os.getenv("CADENCE_VOICE_UNLOCK_SECONDS", "600"))
@@ -91,9 +99,9 @@ def setup_hint() -> str:
     """How to install the missing AI backends, worded for how Cadence is running."""
     if FROZEN:
         return (
-            f"Install the AI backends into {VENDOR_ROOT} by running the one-time "
-            f"setup script ({SETUP_SCRIPT}). See "
-            "https://joemighty.github.io/Cadence/setup.html."
+            f"Open Cadence's setup guide (the banner on the Generate screen) and click "
+            f"Install, or run the setup script ({SETUP_SCRIPT}) to put them in "
+            f"{VENDOR_ROOT}. See https://joemighty.github.io/Cadence/setup.html."
         )
     return f"Run {SETUP_SCRIPT}, or 'uv sync' inside each engine/vendor backend."
 

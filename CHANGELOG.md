@@ -3,6 +3,24 @@
 All notable changes to Cadence. Installers for every version are on
 [GitHub Releases](https://github.com/JoeMighty/Cadence/releases).
 
+## Unreleased
+
+- **Set up Cadence with one button.** The setup dialog now has an **Install now**
+  button that downloads and builds the music and voice backends and the models for
+  you, with no Git, uv, or PowerShell to install first. It shows each step, what it's
+  doing right now, and a full log under Details. You can close the window and keep
+  using Cadence while it runs, cancel at any point, and run it again to pick up where
+  it left off. The command-line route is still there under "Prefer the command line?".
+- **The 11 GB model download is no longer hidden.** It used to happen inside your
+  first song, which only said "Starting music model server" for up to half an hour.
+  It's now a visible step of the install.
+- **Fixed:** the setup scripts never downloaded Applio's pitch models and pretrained
+  voices, which voice training and conversion load from fixed paths with no fallback.
+  A fresh install made with `setup-backends` was missing them. The installer and both
+  scripts now fetch them.
+- When the music model fails to start, the error now includes what the server itself
+  printed instead of only an exit code.
+
 ## v0.2.100 — 21 Jul 2026
 
 - **Autotune and smoothing, for songs sung in your own voice.** Both live under
