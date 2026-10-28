@@ -10,7 +10,7 @@ A local-first desktop AI music generator. Cadence writes, composes, and performs
 tracks from a text prompt in any language, and always sings in a voice cloned from a few
 minutes of your own speech — on your GPU, with no per-song cost.
 
-![Platform](https://img.shields.io/badge/platform-Windows-5856D6?style=plastic)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-5856D6?style=plastic)
 ![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?style=plastic&logo=tauri&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=plastic&logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/engine-FastAPI-009688?style=plastic&logo=fastapi&logoColor=white)
